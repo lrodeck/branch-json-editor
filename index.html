@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch — structural JSON editor</title>
+<meta name="description" content="A JSON editor that works on the tree: select every node at the same structural position and edit them together.">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#eaeeef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1214" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eaeeef; --panel:#ffffff; --panel2:#f5f8f8; --line:#d3dadc; --lineSoft:#e5eaeb;
+  --ink:#141d1d; --dim:#5a6a6c; --faint:#8c999b;
+  --accent:#0c6b76; --accentInk:#ffffff; --accentSoft:#d3e9ec;
+  --sel:#d9edef; --selLine:#0c6b76;
+  --key:#233b4d; --str:#3f6212; --num:#5b21b6; --bool:#9a3412; --nul:#8c999b;
+  --warn:#b42318; --ok:#15803d; --mark:#fbe38a;
+  --kin:#fbe0ea; --kinLine:#be185d;
+  --shadow:0 1px 0 rgba(16,32,32,.05), 0 6px 18px -12px rgba(16,32,32,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1214; --panel:#161b1e; --panel2:#1c2226; --line:#2a3338; --lineSoft:#222a2e;
+    --ink:#e5edee; --dim:#96a5a9; --faint:#66757a;
+    --accent:#4fd1c5; --accentInk:#052220; --accentSoft:#15383a;
+    --sel:#1b3a3d; --selLine:#4fd1c5;
+    --key:#c6d7e4; --str:#a6c96f; --num:#c4b5fd; --bool:#fdba74; --nul:#66757a;
+    --warn:#fca5a5; --ok:#86efac; --mark:#4b4318;
+    --kin:#3d2230; --kinLine:#f0a6c2;
+    --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1214; --panel:#161b1e; --panel2:#1c2226; --line:#2a3338; --lineSoft:#222a2e;
+  --ink:#e5edee; --dim:#96a5a9; --faint:#66757a;
+  --accent:#4fd1c5; --accentInk:#052220; --accentSoft:#15383a;
+  --sel:#1b3a3d; --selLine:#4fd1c5;
+  --key:#c6d7e4; --str:#a6c96f; --num:#c4b5fd; --bool:#fdba74; --nul:#66757a;
+  --warn:#fca5a5; --ok:#86efac; --mark:#4b4318;
+  --kin:#3d2230; --kinLine:#f0a6c2;
+  --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size:14px; line-height:1.45;
+  display:flex; flex-direction:column; min-height:100vh;
+}
+button,input,select,textarea{font:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.mono{font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace}
+
+/* ---------- chrome ---------- */
+header{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:10px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+}
+.brand{display:flex; align-items:baseline; gap:8px; font-weight:600; letter-spacing:-.01em}
+.brand small{font-weight:400; color:var(--faint); font-size:12px}
+.crumbs{display:flex; align-items:center; gap:2px; flex-wrap:wrap; min-width:0; flex:1}
+.crumb{
+  background:none; border:0; padding:2px 6px; border-radius:5px; color:var(--dim);
+  font-family:"IBM Plex Mono", monospace; font-size:12.5px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.crumb:hover{background:var(--panel2); color:var(--ink)}
+.crumb.here{color:var(--ink); font-weight:500}
+.crumbSep{color:var(--faint); font-size:11px}
+.tools{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.btn{
+  background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  padding:5px 9px; font-size:13px; color:var(--ink);
+}
+.btn:hover{background:var(--panel2); border-color:var(--dim)}
+.btn:disabled{opacity:.4; cursor:default}
+.btn:disabled:hover{background:var(--panel); border-color:var(--line)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accentInk); font-weight:500}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--warn)}
+.btn.sm{padding:3px 7px; font-size:12px}
+.seg{display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--panel)}
+.seg button{background:none; border:0; padding:5px 10px; font-size:13px; color:var(--dim)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accentSoft); color:var(--ink); font-weight:500}
+
+.toolbar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+}
+.search{display:flex; align-items:center; gap:6px; flex:1; min-width:220px; max-width:520px;
+  border:1px solid var(--line); border-radius:6px; padding:3px 8px; background:var(--panel2)}
+.search input{flex:1; border:0; background:none; outline:none; padding:3px 0; font-family:"IBM Plex Mono",monospace; font-size:13px}
+.search .hint{color:var(--faint); font-size:11.5px; white-space:nowrap}
+.chip{
+  display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border-radius:999px;
+  background:var(--accentSoft); color:var(--ink); font-size:12px; font-weight:500;
+}
+.chip button{background:none;border:0;padding:0;color:var(--dim);font-size:13px;line-height:1}
+
+main{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 372px; min-height:0}
+.pane{min-width:0; min-height:0; overflow:auto; background:var(--panel)}
+#treePane{border-right:1px solid var(--line); padding:8px 0 40vh}
+aside{background:var(--panel2); border-left:1px solid var(--line); overflow:auto; min-height:0}
+
+/* ---------- tree ---------- */
+.row{
+  --d:0;
+  position:relative; display:flex; align-items:center; gap:0;
+  padding:0 10px 0 calc(34px + var(--d) * 15px);
+  height:24px; white-space:nowrap;
+  background-image:repeating-linear-gradient(to right, var(--lineSoft) 0 1px, transparent 1px 15px);
+  background-size:calc(var(--d) * 15px) 100%; background-position:34px 0; background-repeat:no-repeat;
+}
+.row:hover{background-color:var(--panel2)}
+.row.cursor{box-shadow:inset 2px 0 0 var(--dim)}
+.row.sel{background-color:var(--sel); box-shadow:inset 2px 0 0 var(--selLine)}
+.row.match .k{background:var(--mark); border-radius:3px}
+.row.kin, .row.hkin{background-color:var(--kin); box-shadow:inset 2px 0 0 var(--kinLine)}
+.row.kinalt, .row.hkinalt{box-shadow:inset 2px 0 0 var(--kinLine)}
+.row.kinalt .k, .row.hkinalt .k{text-decoration:underline dotted var(--kinLine); text-underline-offset:2px}
+.tick{
+  position:absolute; left:8px; top:5px; width:13px; height:13px; padding:0;
+  border:1px solid var(--line); border-radius:3px; background:var(--panel);
+}
+.row.sel .tick{background:var(--accent); border-color:var(--accent)}
+.row.sel .tick::after{content:""; position:absolute; inset:2px; border-radius:1px; background:var(--accentInk)}
+.tw{
+  position:absolute; left:calc(24px + var(--d) * 15px); top:2px;
+  width:16px; height:20px; padding:0; border:0; background:none; color:var(--faint); font-size:10px;
+}
+.tw:hover{color:var(--ink)}
+.k{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--key); font-weight:500}
+.k.idx{color:var(--faint); font-weight:400}
+.colon{color:var(--faint); margin:0 6px 0 1px; font-family:"IBM Plex Mono",monospace}
+.v{font-family:"IBM Plex Mono",monospace; font-size:13px; padding:1px 3px; border-radius:3px; cursor:text; max-width:52ch; overflow:hidden; text-overflow:ellipsis}
+.v:hover{background:var(--accentSoft)}
+.v.str{color:var(--str)} .v.num{color:var(--num)} .v.bool{color:var(--bool)} .v.nul{color:var(--nul); font-style:italic}
+.v.box{color:var(--dim); cursor:default}
+.v.box:hover{background:none}
+.count{color:var(--faint); font-family:"IBM Plex Mono",monospace; font-size:12px; margin-left:8px}
+.acts{margin-left:10px; display:none; gap:2px}
+.row:hover .acts, .row.cursor .acts{display:flex}
+.acts button{background:none; border:0; padding:1px 4px; border-radius:4px; color:var(--faint); font-size:12px}
+.acts button:hover{background:var(--accentSoft); color:var(--ink)}
+.editIn{
+  font-family:"IBM Plex Mono",monospace; font-size:13px; border:1px solid var(--accent);
+  border-radius:3px; padding:0 3px; background:var(--panel); min-width:80px; outline:none;
+}
+.empty{padding:24px 16px; color:var(--dim); max-width:56ch}
+.more{padding:8px 16px; color:var(--faint); font-size:12.5px}
+
+/* ---------- inspector ---------- */
+.sec{border-bottom:1px solid var(--line); padding:12px 14px}
+.sec h3{margin:0 0 8px; font-size:13px; font-weight:600; letter-spacing:-.005em}
+.sec h3 .n{color:var(--dim); font-weight:400}
+.pathbox{
+  font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--dim);
+  background:var(--panel); border:1px solid var(--lineSoft); border-radius:5px;
+  padding:5px 7px; word-break:break-all; margin:0 0 8px;
+}
+.pathbox b{color:var(--accent); font-weight:600}
+.grid{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+.stack{display:flex; flex-direction:column; gap:6px}
+.inl{display:flex; gap:6px; align-items:center}
+.f{width:100%; border:1px solid var(--line); border-radius:5px; padding:5px 7px; background:var(--panel); font-size:13px; outline:none}
+.f.mono{font-family:"IBM Plex Mono",monospace; font-size:12.5px}
+.f:focus{border-color:var(--accent)}
+textarea.f{resize:vertical; min-height:56px; line-height:1.4}
+.lbl{font-size:12px; color:var(--dim)}
+.note{font-size:12px; color:var(--dim); margin:6px 0 0}
+.preview{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--dim);
+  background:var(--panel); border:1px dashed var(--line); border-radius:5px; padding:6px;
+  max-height:104px; overflow:auto; margin-top:6px; white-space:pre-wrap; word-break:break-all;
+}
+.preview .to{color:var(--ok)}
+.preview .er{color:var(--warn)}
+.prof{width:100%; border-collapse:collapse; font-size:12.5px}
+.prof th{text-align:left; font-weight:500; color:var(--faint); font-size:11.5px; padding:0 4px 4px; border-bottom:1px solid var(--lineSoft)}
+.prof td{padding:3px 4px; border-bottom:1px solid var(--lineSoft); vertical-align:middle}
+.prof td.kk{font-family:"IBM Plex Mono",monospace; color:var(--key); max-width:130px; overflow:hidden; text-overflow:ellipsis}
+.prof td.cc{color:var(--dim); white-space:nowrap; font-family:"IBM Plex Mono",monospace; font-size:11.5px}
+.prof td.oo{text-align:right; white-space:nowrap}
+.prof tr.part td.cc{color:var(--bool)}
+.prof button{background:none;border:0;color:var(--faint);padding:1px 3px;border-radius:4px;font-size:11.5px}
+.prof button:hover{background:var(--accentSoft); color:var(--ink)}
+.types{display:flex; gap:4px; flex-wrap:wrap}
+.tbadge{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--dim); border:1px solid var(--lineSoft); border-radius:3px; padding:0 4px}
+kbd{font-family:"IBM Plex Mono",monospace; font-size:11px; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; background:var(--panel); color:var(--dim)}
+.keys{display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:12px; color:var(--dim); align-items:center}
+
+/* ---------- table view ---------- */
+#tablePane{padding:0}
+.twrap{overflow:auto; max-width:100%}
+table.tbl{border-collapse:separate; border-spacing:0; font-family:"IBM Plex Mono",monospace; font-size:12.5px}
+table.tbl th, table.tbl td{border-bottom:1px solid var(--lineSoft); border-right:1px solid var(--lineSoft); padding:0; height:26px}
+table.tbl th{
+  position:sticky; top:0; z-index:2; background:var(--panel2); text-align:left; padding:4px 8px;
+  font-weight:500; color:var(--key); white-space:nowrap; border-bottom:1px solid var(--line);
+}
+table.tbl th.rowh, table.tbl td.rowh{position:sticky; left:0; z-index:1; background:var(--panel2); color:var(--faint); text-align:right; padding:0 8px; min-width:52px}
+table.tbl th.rowh{z-index:3}
+table.tbl td input{width:100%; height:26px; border:0; background:none; padding:0 8px; outline:none; font:inherit; color:var(--ink)}
+table.tbl td input:focus{background:var(--accentSoft)}
+table.tbl td.missing input::placeholder{color:var(--faint); font-style:italic}
+table.tbl td.tstr input{color:var(--str)} table.tbl td.tnum input{color:var(--num)}
+table.tbl td.tbool input{color:var(--bool)} table.tbl td.tnul input{color:var(--nul)}
+table.tbl td.tobject input, table.tbl td.tarray input{color:var(--dim)}
+.colbar{display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--panel2)}
+.rowacts{display:flex; gap:2px; padding:0 6px}
+.rowacts button{background:none;border:0;color:var(--faint);padding:0 4px;border-radius:4px}
+.rowacts button:hover{background:var(--accentSoft); color:var(--ink)}
+
+/* ---------- tree chart ---------- */
+#graphPane{overflow:hidden; display:flex; flex-direction:column; padding:0}
+.gbar{display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--panel2)}
+.gbar .lbl{white-space:nowrap}
+.gwrap{flex:1; min-height:320px; position:relative; overflow:hidden; background:var(--panel)}
+.gwrap svg{width:100%; height:100%; display:block; cursor:grab; touch-action:none}
+.gwrap svg.panning{cursor:grabbing}
+.glink{fill:none; stroke:var(--line); stroke-width:1.2}
+.glink.on{stroke:var(--selLine); stroke-width:1.8}
+.gnode .gbox{fill:var(--panel2); stroke:var(--line); stroke-width:1}
+.gnode:hover .gbox{stroke:var(--dim)}
+.gnode.sel .gbox{fill:var(--sel); stroke:var(--selLine); stroke-width:1.6}
+.gnode.cur .gbox{stroke:var(--accent); stroke-width:1.6}
+.gnode.match .gbox{fill:var(--mark)}
+.gnode.kin .gbox, .gnode.hkin .gbox{fill:var(--kin); stroke:var(--kinLine); stroke-width:1.4}
+.gnode.kinalt .gbox, .gnode.hkinalt .gbox{stroke:var(--kinLine); stroke-width:1.2; stroke-dasharray:3 2}
+.sw{display:inline-block; width:8px; height:8px; border-radius:2px; vertical-align:-1px; margin-right:5px}
+.gk{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500; fill:var(--key)}
+.gv{font-family:"IBM Plex Mono",monospace; font-size:12px}
+.fstr{fill:var(--str)} .fnum{fill:var(--num)} .fbool{fill:var(--bool)} .fnul{fill:var(--nul)} .fbox{fill:var(--dim)}
+.gtog circle{fill:var(--panel); stroke:var(--line); stroke-width:1}
+.gtog:hover circle{stroke:var(--accent)}
+.gtog text{font-family:"IBM Plex Mono",monospace; font-size:9.5px; fill:var(--dim); text-anchor:middle}
+
+/* ---------- raw view ---------- */
+#rawPane{padding:12px 14px; display:flex; flex-direction:column; gap:8px}
+#rawText{
+  flex:1; min-height:50vh; width:100%; resize:vertical;
+  font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.5;
+  border:1px solid var(--line); border-radius:7px; padding:10px; background:var(--panel); outline:none;
+}
+#rawText:focus{border-color:var(--accent)}
+.err{color:var(--warn); font-family:"IBM Plex Mono",monospace; font-size:12.5px}
+
+footer{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:6px 14px; border-top:1px solid var(--line); background:var(--panel);
+  font-size:12px; color:var(--dim);
+}
+footer .sp{flex:1}
+#toast{
+  position:fixed; left:50%; bottom:46px; transform:translate(-50%,8px); opacity:0;
+  background:var(--ink); color:var(--panel); padding:7px 12px; border-radius:7px; font-size:12.5px;
+  pointer-events:none; transition:opacity .16s, transform .16s; z-index:50; max-width:80vw;
+}
+#toast.on{opacity:1; transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){#toast{transition:none}}
+
+@media (max-width:900px){
+  main{grid-template-columns:minmax(0,1fr)}
+  aside{border-left:0; border-top:1px solid var(--line); max-height:none}
+  #treePane{padding-bottom:16px; max-height:52vh}
+  .v{max-width:28ch}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Branch <small id="fileName">untitled.json</small></div>
+  <nav class="crumbs" id="crumbs" aria-label="Focused path"></nav>
+  <div class="tools">
+    <button class="btn sm" id="undo" title="Undo (Cmd/Ctrl+Z)">Undo</button>
+    <button class="btn sm" id="redo" title="Redo (Cmd/Ctrl+Shift+Z)">Redo</button>
+    <div class="seg" role="group" aria-label="View">
+      <button data-view="tree" aria-pressed="true">Tree</button>
+      <button data-view="graph" aria-pressed="false">Chart</button>
+      <button data-view="table" aria-pressed="false">Table</button>
+      <button data-view="raw" aria-pressed="false">Text</button>
+    </div>
+    <button class="btn sm" id="openBtn" title="Open a JSON file (Cmd/Ctrl+O)">Open</button>
+    <button class="btn sm" id="saveBtn" title="Save (Cmd/Ctrl+S)">Save</button>
+    <button class="btn sm" id="saveAsBtn" title="Save as a new file (Cmd/Ctrl+Shift+S)">Save as</button>
+    <button class="btn sm" id="copyBtn" title="Copy the whole document">Copy</button>
+    <button class="btn sm" id="themeBtn" title="Switch light/dark">◐</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="search">
+    <span class="hint">find</span>
+    <input id="q" placeholder="key, value, or path glob e.g. $.catalog[*].price" autocomplete="off" spellcheck="false">
+    <span class="hint" id="qCount"></span>
+  </div>
+  <div class="seg" role="group" aria-label="Search in">
+    <button data-qmode="both" aria-pressed="true">Both</button>
+    <button data-qmode="key" aria-pressed="false">Keys</button>
+    <button data-qmode="value" aria-pressed="false">Values</button>
+  </div>
+  <button class="btn sm" id="expandAll">Expand all</button>
+  <button class="btn sm" id="collapseAll">Collapse</button>
+  <button class="btn sm" id="selMatches" hidden>Select matches</button>
+  <span class="sp" style="flex:1"></span>
+  <span id="selChip" hidden class="chip"><span id="selChipN"></span><button id="selClear" title="Clear selection">✕</button></span>
+</div>
+
+<main>
+  <section class="pane" id="treePane" tabindex="0" aria-label="JSON tree"></section>
+  <section class="pane" id="graphPane" hidden aria-label="Tree chart"></section>
+  <section class="pane" id="tablePane" hidden aria-label="Table editor"></section>
+  <section class="pane" id="rawPane" hidden aria-label="JSON text">
+    <div class="inl">
+      <button class="btn primary" id="rawApply">Apply text</button>
+      <button class="btn" id="rawFormat">Reformat</button>
+      <button class="btn" id="rawMinify">Minify</button>
+      <label class="btn" style="display:inline-flex; align-items:center; gap:6px">Open file<input type="file" id="fileIn" accept=".json,.txt,application/json" style="display:none"></label>
+      <span class="err" id="rawErr"></span>
+    </div>
+    <textarea id="rawText" spellcheck="false" wrap="off"></textarea>
+  </section>
+  <aside id="side" aria-label="Inspector"></aside>
+</main>
+
+<footer>
+  <span id="stat"></span>
+  <span id="fileState"></span>
+  <span class="sp"></span>
+  <span>Click a row to select · <kbd>Shift</kbd> range · <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> add · <kbd>?</kbd> keys</span>
+</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ============================ utils ============================ */
+const $ = s => document.querySelector(s);
+const el = (t, c) => { const n = document.createElement(t); if (c) n.className = c; return n; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const T = v => v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
+const pkey = p => JSON.stringify(p);
+const clone = v => (typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
+const ident = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+function seg(k, star) {
+  if (typeof k === 'number') return star ? '[*]' : '[' + k + ']';
+  return ident.test(k) ? '.' + k : '["' + String(k).replace(/"/g, '\\"') + '"]';
+}
+const pathStr  = p => '$' + p.map(k => seg(k, false)).join('');
+const shapeStr = p => '$' + p.map(k => seg(k, true)).join('');
+
+function getAt(root, p) { let c = root; for (const k of p) { if (c === null || typeof c !== 'object') return undefined; c = c[k]; } return c; }
+function exists(root, p) {
+  if (!p.length) return true;
+  const par = getAt(root, p.slice(0, -1));
+  if (par === null || typeof par !== 'object') return false;
+  const k = p[p.length - 1];
+  return Array.isArray(par) ? (typeof k === 'number' && k >= 0 && k < par.length) : Object.prototype.hasOwnProperty.call(par, k);
+}
+function setAt(root, p, v) {
+  if (!p.length) return v;
+  const par = getAt(root, p.slice(0, -1));
+  if (par && typeof par === 'object') par[p[p.length - 1]] = v;
+  return root;
+}
+function cmpPath(a, b) {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    if (a[i] === b[i]) continue;
+    if (typeof a[i] === 'number' && typeof b[i] === 'number') return a[i] - b[i];
+    return String(a[i]) < String(b[i]) ? -1 : 1;
+  }
+  return a.length - b.length;
+}
+function renameKeyIn(obj, oldK, newK) {
+  if (!Object.prototype.hasOwnProperty.call(obj, oldK) || oldK === newK) return false;
+  const out = {};
+  for (const k of Object.keys(obj)) { if (k === oldK) out[newK] = obj[oldK]; else if (k !== newK) out[k] = obj[k]; }
+  for (const k of Object.keys(obj)) delete obj[k];
+  Object.assign(obj, out);
+  return true;
+}
+function preview(v, max) {
+  max = max || 60;
+  const t = T(v);
+  if (t === 'string') { const s = JSON.stringify(v); return s.length > max ? s.slice(0, max - 1) + '…"' : s; }
+  if (t === 'object') return '{' + Object.keys(v).length + '}';
+  if (t === 'array') return '[' + v.length + ']';
+  return String(v);
+}
+function coerce(text, kind) {
+  switch (kind) {
+    case 'string': return text;
+    case 'number': { const n = Number(text); if (text.trim() === '' || Number.isNaN(n)) throw new Error('not a number: ' + text); return n; }
+    case 'boolean': return /^(true|1|yes|y)$/i.test(text.trim());
+    case 'null': return null;
+    case 'json': return JSON.parse(text);
+    case 'object': return {};
+    case 'array': return [];
+    default: return text;
+  }
+}
+function coerceLike(text, oldVal) {
+  const t = T(oldVal);
+  if (t === 'number') { const n = Number(text); return (text.trim() !== '' && !Number.isNaN(n)) ? n : text; }
+  if (t === 'boolean') { if (/^(true|false)$/i.test(text.trim())) return /^true$/i.test(text.trim()); return text; }
+  if (t === 'null') { if (text.trim() === '' || text.trim() === 'null') return null; }
+  if (t === 'object' || t === 'array') { try { return JSON.parse(text); } catch (e) { return oldVal; } }
+  if (t === 'string') return text;
+  if (text.trim() === '') return '';
+  if (text.trim() === 'null') return null;
+  if (/^(true|false)$/.test(text.trim())) return text.trim() === 'true';
+  const n = Number(text); if (text.trim() !== '' && !Number.isNaN(n)) return n;
+  return text;
+}
+function globToRe(g) {
+  let out = '';
+  for (let i = 0; i < g.length; i++) {
+    const c = g[i];
+    if (c === '*') {
+      if (g[i + 1] === '*') { out += '.*'; i++; }
+      else out += '[^.\\[\\]]*';
+    } else out += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp('^' + out + '$', 'i');
+}
+
+/* ============================ state ============================ */
+const SAMPLE = {
+  store: "Northwind Supply",
+  updated: "2026-09-14",
+  catalog: [
+    { sku: "AX-100", name: "Aeron mug", price: 14.5, stock: 12, tags: ["ceramic", "white"], dims: { w: 8, h: 10, unit: "cm" } },
+    { sku: "AX-101", name: "Aeron mug XL", price: "18.00", stock: 4, tags: ["ceramic"], dims: { w: 10, h: 12, unit: "cm" } },
+    { sku: "BZ-220", name: "Copper kettle", price: 62, tags: ["steel"], dims: { w: 18, h: 24, unit: "cm" }, discontinued: false }
+  ],
+  warehouses: [
+    { code: "S1", city: "Lisbon", staff: [{ name: "Ana", role: "lead" }, { name: "Rui", role: "picker" }] },
+    { code: "S2", city: "Porto", staff: [{ name: "Inês", role: "lead" }] }
+  ],
+  settings: { currency: "EUR", taxRate: 0.23, flags: { beta: true, legacyApi: null } }
+};
+
+const st = {
+  doc: SAMPLE,
+  root: [],
+  collapsed: new Set(),
+  selected: new Set(),
+  anchor: null,
+  cursor: 0,
+  view: 'tree',
+  q: '', qmode: 'both',
+  hist: [], hi: -1,
+  rows: [], matches: new Set(),
+  profEdit: null,
+  ui: { setKind: 'string', setVal: '', expr: 'v', findS: '', replS: '', findTarget: 'value', findRe: false,
+        addKey: '', addKind: 'null', addVal: '', newCol: '' }
+};
+
+/* ---- history ---- */
+function pushHist(label) {
+  st.hist = st.hist.slice(0, st.hi + 1);
+  st.hist.push({ doc: clone(st.doc), label });
+  if (st.hist.length > 80) st.hist.shift();
+  st.hi = st.hist.length - 1;
+}
+function mutate(label, fn) {
+  const d = clone(st.doc);
+  let r;
+  try { r = fn(d); } catch (e) { toast(e.message || String(e)); return false; }
+  st.doc = (r === undefined) ? d : r;
+  pushHist(label);
+  pruneSelection();
+  persist();
+  markDirty();
+  render();
+  if (label) toast(label);
+  return true;
+}
+function undo() { if (st.hi <= 0) return; st.hi--; st.doc = clone(st.hist[st.hi].doc); pruneSelection(); persist(); markDirty(); render(); toast('Undo ' + (st.hist[st.hi + 1].label || '')); }
+function redo() { if (st.hi >= st.hist.length - 1) return; st.hi++; st.doc = clone(st.hist[st.hi].doc); pruneSelection(); persist(); markDirty(); render(); toast('Redo ' + (st.hist[st.hi].label || '')); }
+function pruneSelection() {
+  for (const k of Array.from(st.selected)) { if (!exists(st.doc, JSON.parse(k))) st.selected.delete(k); }
+  while (st.root.length && !exists(st.doc, st.root)) st.root.pop();
+}
+
+/* ---- persistence (this browser only) ---- */
+function persist() {
+  try { localStorage.setItem('branch.doc', JSON.stringify(st.doc)); } catch (e) { /* storage may be unavailable */ }
+}
+function restore() {
+  try { const s = localStorage.getItem('branch.doc'); if (s) return JSON.parse(s); } catch (e) { }
+  return null;
+}
+
+function toast(m) {
+  if (!m) return;
+  const t = $('#toast'); t.textContent = m; t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 1900);
+}
+
+/* ============================ tree model ============================ */
+function walkAll(val, path, fn) {
+  fn(val, path);
+  const t = T(val);
+  if (t === 'array') val.forEach((v, i) => walkAll(v, path.concat([i]), fn));
+  else if (t === 'object') for (const k of Object.keys(val)) walkAll(val[k], path.concat([k]), fn);
+}
+function computeMatches() {
+  st.matches = new Set();
+  const q = st.q.trim();
+  if (!q) return;
+  const isGlob = q.includes('*') || q.startsWith('$');
+  const re = isGlob ? globToRe(q) : null;
+  const lq = q.toLowerCase();
+  walkAll(getAt(st.doc, st.root), st.root, (v, p) => {
+    if (!p.length && !st.root.length) return;
+    let hit = false;
+    if (re) {
+      hit = re.test(pathStr(p)) || re.test(shapeStr(p));
+    } else {
+      const key = String(p[p.length - 1] ?? '');
+      const t = T(v);
+      const inKey = key.toLowerCase().includes(lq);
+      const inVal = (t !== 'object' && t !== 'array') && String(v).toLowerCase().includes(lq);
+      hit = st.qmode === 'key' ? inKey : st.qmode === 'value' ? inVal : (inKey || inVal);
+    }
+    if (hit) st.matches.add(pkey(p));
+  });
+}
+function buildRows() {
+  const rows = [];
+  const filtering = st.q.trim() !== '';
+  let keep = null;
+  if (filtering) {
+    keep = new Set();
+    for (const mk of st.matches) {
+      const p = JSON.parse(mk);
+      for (let i = st.root.length; i <= p.length; i++) keep.add(pkey(p.slice(0, i)));
+    }
+    keep.add(pkey(st.root));
+  }
+  const rootVal = getAt(st.doc, st.root);
+  (function walk(val, path, depth) {
+    const k = pkey(path);
+    if (keep && !keep.has(k)) return;
+    const t = T(val);
+    rows.push({ path, pk: k, depth, value: val, type: t, match: st.matches.has(k), shape: shapeStr(path) });
+    if ((t === 'object' || t === 'array') && (filtering || !st.collapsed.has(k)) && rows.length < 4000) {
+      if (t === 'array') val.forEach((v, i) => walk(v, path.concat([i]), depth + 1));
+      else for (const key of Object.keys(val)) walk(val[key], path.concat([key]), depth + 1);
+    }
+  })(rootVal, st.root, 0);
+  st.rows = rows;
+  st.byKey = new Map();
+  rows.forEach((r, i) => {
+    const k = r.path[r.path.length - 1];
+    if (typeof k !== 'string') return;
+    if (!st.byKey.has(k)) st.byKey.set(k, []);
+    st.byKey.get(k).push(i);
+  });
+}
+
+/* Which key is "in focus" — the node the cursor sits on. Every other visible
+   node carrying the same key is kin: solid if it also sits at the same
+   structural position, dotted if the key just happens to repeat elsewhere. */
+function kinFocus() {
+  const cur = st.rows[st.cursor];
+  if (!cur || !cur.path.length) return null;
+  const k = cur.path[cur.path.length - 1];
+  if (typeof k !== 'string') return null;
+  return { key: k, shape: cur.shape };
+}
+function kinClass(r, i, ki) {
+  if (!ki || i === st.cursor || st.selected.has(r.pk)) return '';
+  const k = r.path[r.path.length - 1];
+  if (typeof k !== 'string' || k !== ki.key) return '';
+  return r.shape === ki.shape ? 'kin' : 'kinalt';
+}
+
+/* ============================ render: tree ============================ */
+function rowHTML(r, i, ki) {
+  const isRoot = r.path.length === 0;
+  const cont = r.type === 'object' || r.type === 'array';
+  const coll = st.collapsed.has(r.pk) && st.q.trim() === '';
+  const kids = cont ? (r.type === 'array' ? r.value.length : Object.keys(r.value).length) : 0;
+  const k = r.path[r.path.length - 1];
+  const cls = ['row'];
+  if (st.selected.has(r.pk)) cls.push('sel');
+  if (i === st.cursor) cls.push('cursor');
+  if (r.match) cls.push('match');
+  const kc = kinClass(r, i, ki);
+  if (kc) cls.push(kc);
+
+  let keyHTML;
+  if (isRoot) keyHTML = '<span class="k idx">' + (st.root.length ? esc(String(k)) : '$') + '</span>';
+  else if (typeof k === 'number') keyHTML = '<span class="k idx">' + k + '</span>';
+  else keyHTML = '<span class="k">' + esc(k) + '</span>';
+
+  let valHTML;
+  if (cont) {
+    const open = r.type === 'array' ? '[' : '{';
+    const close = r.type === 'array' ? ']' : '}';
+    valHTML = coll
+      ? '<span class="v box">' + open + ' ' + kids + ' ' + (r.type === 'array' ? (kids === 1 ? 'item' : 'items') : (kids === 1 ? 'key' : 'keys')) + ' ' + close + '</span>'
+      : '<span class="v box">' + open + close + '</span><span class="count">' + kids + '</span>';
+  } else {
+    const t = r.type;
+    const cl = t === 'string' ? 'str' : t === 'number' ? 'num' : t === 'boolean' ? 'bool' : 'nul';
+    valHTML = '<span class="v ' + cl + '" data-act="edit" title="Click to edit">' + esc(preview(r.value, 90)) + '</span>';
+  }
+
+  const acts = [
+    '<button data-act="focus" title="Zoom into this branch">⌖</button>',
+    '<button data-act="shape" title="Select every node at this structural position">≡</button>',
+    cont ? '<button data-act="add" title="Add a child">+</button>' : '',
+    r.type === 'array' && kids && T(r.value[0]) === 'object' ? '<button data-act="table" title="Open as a table">▦</button>' : '',
+    isRoot ? '' : '<button data-act="del" title="Delete">✕</button>'
+  ].join('');
+
+  return '<div class="' + cls.join(' ') + '" data-i="' + i + '" style="--d:' + r.depth + '">' +
+    '<button class="tick" data-act="tick" aria-label="Select"></button>' +
+    (cont && kids ? '<button class="tw" data-act="tw">' + (coll ? '▶' : '▼') + '</button>' : '') +
+    keyHTML + (isRoot && !st.root.length ? '' : '<span class="colon">:</span>') + valHTML +
+    '<span class="acts">' + acts + '</span>' +
+  '</div>';
+}
+function renderTree() {
+  const pane = $('#treePane');
+  if (!st.rows.length) {
+    pane.innerHTML = '<div class="empty">Nothing matches <span class="mono">' + esc(st.q) + '</span>. Try a shorter term, or a path glob like <span class="mono">$.**.price</span>.</div>';
+    return;
+  }
+  let h = '';
+  const ki = kinFocus();
+  for (let i = 0; i < st.rows.length; i++) h += rowHTML(st.rows[i], i, ki);
+  if (st.rows.length >= 4000) h += '<div class="more">Stopped at 4000 rows. Zoom into a branch (⌖) or filter to see the rest.</div>';
+  pane.innerHTML = h;
+}
+
+/* ============================ render: crumbs, chrome ============================ */
+function renderCrumbs() {
+  const c = $('#crumbs'); c.innerHTML = '';
+  const mk = (label, idx) => {
+    const b = el('button', 'crumb' + (idx === st.root.length ? ' here' : ''));
+    b.textContent = label;
+    b.onclick = () => { st.root = st.root.slice(0, idx); st.cursor = 0; render(); };
+    return b;
+  };
+  c.appendChild(mk('$', 0));
+  st.root.forEach((k, i) => {
+    const s = el('span', 'crumbSep'); s.textContent = '›'; c.appendChild(s);
+    c.appendChild(mk(typeof k === 'number' ? '[' + k + ']' : String(k), i + 1));
+  });
+}
+function renderChrome() {
+  $('#undo').disabled = st.hi <= 0;
+  $('#redo').disabled = st.hi >= st.hist.length - 1;
+  const n = st.selected.size;
+  $('#selChip').hidden = !n;
+  $('#selChipN').textContent = n + (n === 1 ? ' node selected' : ' nodes selected');
+  const mm = st.matches.size;
+  $('#qCount').textContent = st.q.trim() ? (mm + ' match' + (mm === 1 ? '' : 'es')) : '';
+  $('#selMatches').hidden = !st.q.trim() || !mm;
+  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === st.view)));
+  document.querySelectorAll('[data-qmode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.qmode === st.qmode)));
+  let nodes = 0, leaves = 0;
+  walkAll(st.doc, [], (v) => { nodes++; if (T(v) !== 'object' && T(v) !== 'array') leaves++; });
+  const bytes = JSON.stringify(st.doc).length;
+  $('#stat').textContent = nodes.toLocaleString() + ' nodes · ' + leaves.toLocaleString() + ' values · ' +
+    (bytes > 9999 ? (bytes / 1024).toFixed(1) + ' kB' : bytes + ' B');
+}
+
+/* ============================ selection ============================ */
+function selPaths() { return Array.from(st.selected).map(JSON.parse).sort(cmpPath); }
+function selectOnly(pk) { st.selected = new Set([pk]); st.anchor = pk; }
+function toggle(pk) { if (st.selected.has(pk)) st.selected.delete(pk); else st.selected.add(pk); st.anchor = pk; }
+function rangeTo(i) {
+  const a = st.rows.findIndex(r => r.pk === st.anchor);
+  if (a < 0) { selectOnly(st.rows[i].pk); return; }
+  const [lo, hi] = a < i ? [a, i] : [i, a];
+  for (let j = lo; j <= hi; j++) st.selected.add(st.rows[j].pk);
+}
+function selectShape(path) {
+  const target = shapeStr(path);
+  let n = 0;
+  st.selected = new Set();
+  walkAll(st.doc, [], (v, p) => { if (p.length && shapeStr(p) === target) { st.selected.add(pkey(p)); n++; } });
+  st.anchor = pkey(path);
+  toast(n + ' nodes at ' + target);
+}
+function selectKey(key) {
+  let n = 0;
+  st.selected = new Set();
+  walkAll(st.doc, [], (v, p) => { if (p.length && p[p.length - 1] === key) { st.selected.add(pkey(p)); n++; } });
+  toast(n + ' nodes named "' + key + '"');
+}
+function selectChildrenOf(path, deep) {
+  const v = getAt(st.doc, path);
+  st.selected = new Set();
+  walkAll(v, path, (cv, cp) => {
+    if (cp.length === path.length) return;
+    if (!deep && cp.length !== path.length + 1) return;
+    st.selected.add(pkey(cp));
+  });
+}
+function selectSiblings(path) {
+  if (!path.length) return;
+  selectChildrenOf(path.slice(0, -1), false);
+}
+
+/* ============================ batch operations ============================ */
+function opDelete() {
+  const ps = selPaths().filter(p => p.length);
+  if (!ps.length) return;
+  mutate('Deleted ' + ps.length + ' nodes', d => {
+    for (const p of ps.slice().sort((a, b) => cmpPath(b, a))) {
+      const par = getAt(d, p.slice(0, -1));
+      if (!par || typeof par !== 'object') continue;
+      const k = p[p.length - 1];
+      if (Array.isArray(par)) { if (typeof k === 'number' && k < par.length) par.splice(k, 1); }
+      else delete par[k];
+    }
+  });
+  st.selected.clear();
+}
+function opSetValue() {
+  const ps = selPaths();
+  if (!ps.length) return;
+  let v;
+  try { v = coerce(st.ui.setVal, st.ui.setKind); } catch (e) { toast(e.message); return; }
+  mutate('Set ' + ps.length + ' values', d => { for (const p of ps) { if (!p.length) return clone(v); setAt(d, p, clone(v)); } });
+}
+function makeFn(src) {
+  const body = /\breturn\b/.test(src) ? src : 'return (' + src + ')';
+  return new Function('v', 'p', 'i', 'doc', body);
+}
+function opTransform() {
+  const ps = selPaths();
+  if (!ps.length) return;
+  let f; try { f = makeFn(st.ui.expr); } catch (e) { toast('Bad expression: ' + e.message); return; }
+  let errs = 0;
+  mutate('Transformed ' + ps.length + ' values', d => {
+    ps.forEach((p, i) => {
+      try {
+        const nv = f(getAt(d, p), p.slice(), i, d);
+        if (nv === undefined) return;
+        if (!p.length) throw new Error('cannot replace the root here');
+        setAt(d, p, nv);
+      } catch (e) { errs++; }
+    });
+  });
+  if (errs) toast(errs + ' node(s) skipped — the expression threw');
+}
+function transformPreview() {
+  const box = $('#tPrev'); if (!box) return;
+  const ps = selPaths().slice(0, 4);
+  if (!ps.length) { box.textContent = ''; return; }
+  let f;
+  try { f = makeFn(st.ui.expr); } catch (e) { box.innerHTML = '<span class="er">' + esc(e.message) + '</span>'; return; }
+  box.innerHTML = ps.map((p, i) => {
+    let out;
+    try { out = '<span class="to">' + esc(preview(f(getAt(st.doc, p), p.slice(), i, st.doc), 40)) + '</span>'; }
+    catch (e) { out = '<span class="er">' + esc(e.message) + '</span>'; }
+    return esc(pathStr(p).slice(0, 40)) + '  ' + esc(preview(getAt(st.doc, p), 26)) + ' → ' + out;
+  }).join('\n') + (st.selected.size > 4 ? '\n… and ' + (st.selected.size - 4) + ' more' : '');
+}
+function opRenameKey(name) {
+  if (!name) return;
+  const ps = selPaths().filter(p => p.length && typeof p[p.length - 1] === 'string');
+  if (!ps.length) { toast('Renaming needs nodes that sit inside objects'); return; }
+  mutate('Renamed ' + ps.length + ' keys', d => {
+    for (const p of ps) {
+      const par = getAt(d, p.slice(0, -1));
+      if (par && !Array.isArray(par) && typeof par === 'object') renameKeyIn(par, p[p.length - 1], name);
+    }
+  });
+  st.selected.clear();
+}
+function opFindReplace() {
+  const { findS, replS, findTarget, findRe } = st.ui;
+  if (!findS) { toast('Type something to find'); return; }
+  let re; try { re = new RegExp(findRe ? findS : findS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'); }
+  catch (e) { toast('Bad pattern: ' + e.message); return; }
+  const ps = selPaths();
+  let hits = 0;
+  mutate(null, d => {
+    for (const p of ps) {
+      if ((findTarget === 'value' || findTarget === 'both')) {
+        const v = getAt(d, p);
+        if (typeof v === 'string') { const nv = v.replace(re, replS); if (nv !== v) { setAt(d, p, nv); hits++; } }
+      }
+      if ((findTarget === 'key' || findTarget === 'both') && p.length && typeof p[p.length - 1] === 'string') {
+        const par = getAt(d, p.slice(0, -1));
+        const ok = p[p.length - 1], nk = ok.replace(re, replS);
+        if (nk !== ok && par && !Array.isArray(par)) { renameKeyIn(par, ok, nk); hits++; }
+      }
+    }
+  });
+  toast(hits + ' replacement' + (hits === 1 ? '' : 's'));
+  st.selected.clear();
+}
+function opCoerce(kind) {
+  const ps = selPaths();
+  if (!ps.length) return;
+  mutate('Converted ' + ps.length + ' values to ' + kind, d => {
+    for (const p of ps) {
+      const v = getAt(d, p);
+      let nv = v;
+      if (kind === 'string') nv = (v === null || typeof v === 'object') ? JSON.stringify(v) : String(v);
+      else if (kind === 'number') { const n = Number(v); nv = Number.isNaN(n) ? v : n; }
+      else if (kind === 'boolean') nv = typeof v === 'string' ? /^(true|1|yes|y)$/i.test(v.trim()) : Boolean(v);
+      else if (kind === 'null') nv = null;
+      if (!p.length) return nv;
+      setAt(d, p, nv);
+    }
+  });
+}
+function opAddKey(onlyMissing) {
+  const ps = selPaths();
+  const targets = ps.filter(p => T(getAt(st.doc, p)) === 'object');
+  if (!targets.length) { toast('Select one or more objects first'); return; }
+  const name = st.ui.addKey.trim();
+  if (!name) { toast('Name the key first'); return; }
+  let v; try { v = coerce(st.ui.addVal, st.ui.addKind); } catch (e) { toast(e.message); return; }
+  mutate('Added "' + name + '" to ' + targets.length + ' objects', d => {
+    for (const p of targets) {
+      const o = getAt(d, p);
+      if (onlyMissing && Object.prototype.hasOwnProperty.call(o, name)) continue;
+      o[name] = clone(v);
+    }
+  });
+}
+function opSortKeys() {
+  const ps = selPaths().filter(p => T(getAt(st.doc, p)) === 'object');
+  if (!ps.length) { toast('Select one or more objects first'); return; }
+  mutate('Sorted keys in ' + ps.length + ' objects', d => {
+    for (const p of ps) {
+      const o = getAt(d, p);
+      const keys = Object.keys(o).sort();
+      const copy = {}; keys.forEach(k => copy[k] = o[k]);
+      for (const k of Object.keys(o)) delete o[k];
+      Object.assign(o, copy);
+    }
+  });
+}
+function opDuplicate() {
+  const ps = selPaths().filter(p => p.length && typeof p[p.length - 1] === 'number');
+  if (!ps.length) { toast('Duplicating works on array items'); return; }
+  mutate('Duplicated ' + ps.length + ' items', d => {
+    for (const p of ps.slice().sort((a, b) => cmpPath(b, a))) {
+      const arr = getAt(d, p.slice(0, -1));
+      const i = p[p.length - 1];
+      if (Array.isArray(arr)) arr.splice(i + 1, 0, clone(arr[i]));
+    }
+  });
+}
+function opWrap(kind) {
+  const ps = selPaths().filter(p => p.length);
+  if (!ps.length) return;
+  mutate('Wrapped ' + ps.length + ' nodes in ' + (kind === 'array' ? 'an array' : 'an object'), d => {
+    for (const p of ps) {
+      const v = getAt(d, p);
+      setAt(d, p, kind === 'array' ? [v] : { value: v });
+    }
+  });
+}
+function opUnwrap() {
+  const ps = selPaths().filter(p => p.length);
+  let n = 0;
+  mutate(null, d => {
+    for (const p of ps) {
+      const v = getAt(d, p);
+      if (Array.isArray(v) && v.length === 1) { setAt(d, p, v[0]); n++; }
+      else if (v && typeof v === 'object' && Object.keys(v).length === 1) { setAt(d, p, v[Object.keys(v)[0]]); n++; }
+    }
+  });
+  toast(n + ' node(s) unwrapped');
+}
+function addChild(path) {
+  const v = getAt(st.doc, path);
+  if (T(v) === 'array') {
+    mutate('Added item', d => { getAt(d, path).push(null); });
+    const np = path.concat([getAt(st.doc, path).length - 1]);
+    st.collapsed.delete(pkey(path));
+    selectOnly(pkey(np)); render(); focusRowEditor(pkey(np));
+  } else if (T(v) === 'object') {
+    let name = 'newKey', i = 1;
+    while (Object.prototype.hasOwnProperty.call(v, name)) name = 'newKey' + (++i);
+    mutate('Added key', d => { getAt(d, path)[name] = null; });
+    st.collapsed.delete(pkey(path));
+    const np = path.concat([name]);
+    selectOnly(pkey(np)); render(); beginKeyEdit(pkey(np));
+  }
+}
+
+/* ============================ branch profile ============================ */
+function profileOf(path) {
+  const v = getAt(st.doc, path);
+  const t = T(v);
+  if (t !== 'array' && t !== 'object') return null;
+  const entries = t === 'array' ? v.map((x, i) => [i, x]) : Object.entries(v);
+  const objEntries = entries.filter(([, x]) => T(x) === 'object');
+  if (objEntries.length < 2) return null;
+  const cols = new Map();
+  for (const [k, o] of objEntries) {
+    for (const ck of Object.keys(o)) {
+      if (!cols.has(ck)) cols.set(ck, { key: ck, count: 0, types: new Set() });
+      const c = cols.get(ck); c.count++; c.types.add(T(o[ck]));
+    }
+  }
+  return { path, total: objEntries.length, childKeys: objEntries.map(([k]) => k), cols: Array.from(cols.values()) };
+}
+function profileTargets(prof, key) {
+  const out = [];
+  for (const ck of prof.childKeys) {
+    const p = prof.path.concat([ck, key]);
+    if (exists(st.doc, p)) out.push(p);
+  }
+  return out;
+}
+
+/* ============================ render: inspector ============================ */
+function renderSide() {
+  const side = $('#side');
+  side.innerHTML = '';
+  const cur = st.rows[st.cursor];
+  const n = st.selected.size;
+
+  /* --- current node --- */
+  if (cur) {
+    const s = el('section', 'sec');
+    const sp = shapeStr(cur.path);
+    s.innerHTML = '<h3>Node</h3>' +
+      '<p class="pathbox">' + esc(pathStr(cur.path) || '$') + '</p>' +
+      (sp !== pathStr(cur.path) ? '<p class="pathbox">shape <b>' + esc(sp) + '</b></p>' : '') +
+      '<div class="types"><span class="tbadge">' + cur.type + '</span></div>';
+    const ck = cur.path[cur.path.length - 1];
+    if (typeof ck === 'string') {
+      let nKey = 0, nShape = 0;
+      walkAll(st.doc, [], (v, p) => {
+        if (p.length && p[p.length - 1] === ck) { nKey++; if (shapeStr(p) === sp) nShape++; }
+      });
+      s.innerHTML += '<p class="note">' +
+        '<span class="sw" style="background:var(--accent)"></span>this one · ' +
+        '<span class="sw" style="background:var(--kin)"></span>' + (nShape - 1) + ' more at this shape · ' +
+        '<span class="sw" style="background:var(--kinLine)"></span>' + (nKey - nShape) + ' named ' + esc(ck) + ' elsewhere</p>';
+    }
+    if (cur.type !== 'object' && cur.type !== 'array') {
+      const ed = el('div', 'inl'); ed.style.marginTop = '8px';
+      const vi = el('input', 'f mono'); vi.id = 'nodeVal';
+      vi.value = cur.type === 'string' ? cur.value : JSON.stringify(cur.value);
+      const go = el('button', 'btn sm primary'); go.textContent = 'Set';
+      const apply = () => {
+        const nv = coerceLike(vi.value, cur.value);
+        if (JSON.stringify(nv) !== JSON.stringify(cur.value)) mutate(null, d => { if (!cur.path.length) return nv; setAt(d, cur.path, nv); });
+      };
+      go.onclick = apply;
+      vi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } if (e.key === 'Escape') vi.blur(); e.stopPropagation(); };
+      ed.appendChild(vi); ed.appendChild(go);
+      s.appendChild(ed);
+    }
+    const row = el('div', 'inl'); row.style.marginTop = '8px'; row.style.flexWrap = 'wrap';
+    const mkb = (label, title, fn) => { const b = el('button', 'btn sm'); b.textContent = label; b.title = title; b.onclick = fn; return b; };
+    row.appendChild(mkb('Zoom in', 'Make this the visible root', () => { st.root = cur.path.slice(); st.cursor = 0; render(); }));
+    row.appendChild(mkb('Same shape', 'Select every node at this structural position (' + sp + ')', () => { selectShape(cur.path); render(); }));
+    if (typeof ck === 'string') row.appendChild(mkb('Same key', 'Select every node named "' + ck + '", wherever it sits', () => { selectKey(ck); render(); }));
+    row.appendChild(mkb('Siblings', 'Select every node beside this one', () => { selectSiblings(cur.path); render(); }));
+    if (cur.type === 'object' || cur.type === 'array') {
+      row.appendChild(mkb('Children', 'Select the direct children', () => { selectChildrenOf(cur.path, false); render(); }));
+      row.appendChild(mkb('Subtree', 'Select every descendant', () => { selectChildrenOf(cur.path, true); render(); }));
+    }
+    s.appendChild(row);
+    side.appendChild(s);
+  }
+
+  /* --- branch profile --- */
+  const prof = cur ? (profileOf(cur.path) || (cur.path.length ? profileOf(cur.path.slice(0, -1)) : null)) : null;
+  if (prof) {
+    const s = el('section', 'sec');
+    s.innerHTML = '<h3>Branch keys <span class="n">· ' + prof.total + ' children of ' + esc(shapeStr(prof.path)) + '</span></h3>';
+    const tb = el('table', 'prof');
+    tb.innerHTML = '<thead><tr><th>key</th><th>present</th><th>types</th><th></th></tr></thead>';
+    const body = el('tbody');
+    for (const c of prof.cols) {
+      const tr = el('tr', c.count < prof.total ? 'part' : '');
+      tr.innerHTML = '<td class="kk" title="' + esc(c.key) + '">' + esc(c.key) + '</td>' +
+        '<td class="cc">' + c.count + '/' + prof.total + '</td>' +
+        '<td class="cc">' + Array.from(c.types).join(' ') + '</td>';
+      const ops = el('td', 'oo');
+      const mk = (t, title, fn) => { const b = el('button'); b.textContent = t; b.title = title; b.onclick = fn; return b; };
+      ops.appendChild(mk('select', 'Select all ' + c.count + ' of these values', () => {
+        st.selected = new Set(profileTargets(prof, c.key).map(pkey)); st.profEdit = null; render();
+      }));
+      ops.appendChild(mk('rename', 'Rename this key in every child', () => { st.profEdit = { key: c.key, mode: 'rename', path: prof.path }; renderSide(); }));
+      if (c.count < prof.total) ops.appendChild(mk('fill', 'Add this key to the children missing it', () => { st.profEdit = { key: c.key, mode: 'fill', path: prof.path }; renderSide(); }));
+      ops.appendChild(mk('drop', 'Remove this key from every child', () => {
+        const ts = profileTargets(prof, c.key);
+        mutate('Removed "' + c.key + '" from ' + ts.length + ' children', d => { for (const p of ts) delete getAt(d, p.slice(0, -1))[c.key]; });
+      }));
+      tr.appendChild(ops);
+      body.appendChild(tr);
+      if (st.profEdit && st.profEdit.key === c.key && pkey(st.profEdit.path) === pkey(prof.path)) {
+        const tr2 = el('tr'); const td = el('td'); td.colSpan = 4; td.style.padding = '6px 4px';
+        const wrap = el('div', 'inl');
+        const inp = el('input', 'f mono');
+        inp.value = st.profEdit.mode === 'rename' ? c.key : 'null';
+        inp.placeholder = st.profEdit.mode === 'rename' ? 'new key name' : 'JSON value for missing children';
+        const go = el('button', 'btn sm primary'); go.textContent = st.profEdit.mode === 'rename' ? 'Rename' : 'Fill';
+        const cancel = el('button', 'btn sm'); cancel.textContent = 'Cancel';
+        cancel.onclick = () => { st.profEdit = null; renderSide(); };
+        go.onclick = () => {
+          const val = inp.value;
+          if (st.profEdit.mode === 'rename') {
+            if (!val.trim()) return;
+            mutate('Renamed "' + c.key + '" to "' + val.trim() + '" in ' + prof.total + ' children', d => {
+              for (const ck of prof.childKeys) { const o = getAt(d, prof.path.concat([ck])); if (o && T(o) === 'object') renameKeyIn(o, c.key, val.trim()); }
+            });
+          } else {
+            let pv; try { pv = JSON.parse(val); } catch (e) { toast('That is not valid JSON'); return; }
+            let cnt = 0;
+            mutate(null, d => {
+              for (const ck of prof.childKeys) {
+                const o = getAt(d, prof.path.concat([ck]));
+                if (o && T(o) === 'object' && !Object.prototype.hasOwnProperty.call(o, c.key)) { o[c.key] = clone(pv); cnt++; }
+              }
+            });
+            toast('Filled "' + c.key + '" in ' + cnt + ' children');
+          }
+          st.profEdit = null;
+        };
+        inp.onkeydown = e => { if (e.key === 'Enter') go.click(); if (e.key === 'Escape') cancel.click(); };
+        wrap.appendChild(inp); wrap.appendChild(go); wrap.appendChild(cancel);
+        td.appendChild(wrap); tr2.appendChild(td); body.appendChild(tr2);
+        setTimeout(() => { inp.focus(); inp.select(); }, 0);
+      }
+    }
+    tb.appendChild(body);
+    s.appendChild(tb);
+    const foot = el('div', 'inl'); foot.style.marginTop = '8px'; foot.style.flexWrap = 'wrap';
+    const b1 = el('button', 'btn sm'); b1.textContent = 'Give every child every key';
+    b1.title = 'Add the missing keys to every child, as null';
+    b1.onclick = () => {
+      const keys = prof.cols.map(c => c.key);
+      let cnt = 0;
+      mutate(null, d => {
+        for (const ck of prof.childKeys) {
+          const o = getAt(d, prof.path.concat([ck]));
+          if (!o || T(o) !== 'object') continue;
+          const copy = {};
+          for (const k of keys) { if (Object.prototype.hasOwnProperty.call(o, k)) copy[k] = o[k]; else { copy[k] = null; cnt++; } }
+          for (const k of Object.keys(o)) if (!keys.includes(k)) copy[k] = o[k];
+          for (const k of Object.keys(o)) delete o[k];
+          Object.assign(o, copy);
+        }
+      });
+      toast('Added ' + cnt + ' missing key' + (cnt === 1 ? '' : 's'));
+    };
+    foot.appendChild(b1);
+    const b2 = el('button', 'btn sm'); b2.textContent = 'Open as table';
+    b2.onclick = () => { st.root = prof.path.slice(); setView('table'); };
+    if (T(getAt(st.doc, prof.path)) === 'array') foot.appendChild(b2);
+    s.appendChild(foot);
+    side.appendChild(s);
+  }
+
+  /* --- batch panel --- */
+  const s = el('section', 'sec');
+  if (!n) {
+    s.innerHTML = '<h3>Batch edit</h3><p class="note">Select nodes to edit them together. The fastest way in: put the cursor on one value and press <kbd>m</kbd> — that selects every node at the same position in every sibling branch. Or use the <span class="mono">select</span> buttons in Branch keys above.</p>';
+    side.appendChild(s);
+  } else {
+    const ps = selPaths();
+    const shapes = new Set(ps.map(shapeStr));
+    const types = {};
+    ps.forEach(p => { const t = T(getAt(st.doc, p)); types[t] = (types[t] || 0) + 1; });
+    s.innerHTML = '<h3>Batch edit <span class="n">· ' + n + ' selected</span></h3>' +
+      '<p class="pathbox">' + (shapes.size === 1 ? '<b>' + esc(Array.from(shapes)[0]) + '</b>' : esc(shapes.size + ' different shapes')) + '</p>' +
+      '<div class="types">' + Object.entries(types).map(([t, c]) => '<span class="tbadge">' + c + ' ' + t + '</span>').join('') + '</div>';
+
+    const box = el('div', 'stack'); box.style.marginTop = '10px';
+
+    // set value
+    const g1 = el('div', 'stack');
+    g1.innerHTML = '<label class="lbl">Set every selected value</label>';
+    const r1 = el('div', 'inl');
+    const kind = el('select', 'f'); kind.style.maxWidth = '110px';
+    ['string', 'number', 'boolean', 'null', 'json', 'object', 'array'].forEach(k => { const o = el('option'); o.value = k; o.textContent = k; kind.appendChild(o); });
+    kind.value = st.ui.setKind;
+    const sval = el('input', 'f mono'); sval.placeholder = 'value'; sval.value = st.ui.setVal;
+    kind.onchange = () => { st.ui.setKind = kind.value; sval.disabled = ['null', 'object', 'array'].includes(kind.value); };
+    sval.oninput = () => { st.ui.setVal = sval.value; };
+    sval.disabled = ['null', 'object', 'array'].includes(kind.value);
+    const sgo = el('button', 'btn sm primary'); sgo.textContent = 'Set'; sgo.onclick = opSetValue;
+    sval.onkeydown = e => { if (e.key === 'Enter') opSetValue(); };
+    r1.appendChild(kind); r1.appendChild(sval); r1.appendChild(sgo);
+    g1.appendChild(r1); box.appendChild(g1);
+
+    // transform
+    const g2 = el('div', 'stack');
+    g2.innerHTML = '<label class="lbl">Transform each value — an expression over <span class="mono">v</span>, <span class="mono">p</span> (path), <span class="mono">i</span> (index)</label>';
+    const ta = el('textarea', 'f mono'); ta.value = st.ui.expr; ta.rows = 2;
+    ta.placeholder = 'v.trim().toLowerCase()';
+    const prev = el('div', 'preview'); prev.id = 'tPrev';
+    ta.oninput = () => { st.ui.expr = ta.value; transformPreview(); };
+    ta.onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); opTransform(); } };
+    const r2 = el('div', 'inl');
+    const tgo = el('button', 'btn sm primary'); tgo.textContent = 'Apply'; tgo.onclick = opTransform;
+    r2.appendChild(tgo);
+    ['Number(v)', 'String(v)', 'v.trim()', 'v*1.2', 'v ?? 0'].forEach(x => {
+      const b = el('button', 'btn sm'); b.textContent = x;
+      b.onclick = () => { st.ui.expr = x; ta.value = x; transformPreview(); };
+      r2.appendChild(b);
+    });
+    r2.style.flexWrap = 'wrap';
+    g2.appendChild(ta); g2.appendChild(prev); g2.appendChild(r2); box.appendChild(g2);
+
+    // find / replace
+    const g3 = el('div', 'stack');
+    g3.innerHTML = '<label class="lbl">Find and replace inside the selection</label>';
+    const r3 = el('div', 'inl');
+    const fi = el('input', 'f mono'); fi.placeholder = 'find'; fi.value = st.ui.findS;
+    const ri = el('input', 'f mono'); ri.placeholder = 'replace'; ri.value = st.ui.replS;
+    fi.oninput = () => st.ui.findS = fi.value; ri.oninput = () => st.ui.replS = ri.value;
+    r3.appendChild(fi); r3.appendChild(ri);
+    const r3b = el('div', 'inl');
+    const tgt = el('select', 'f'); tgt.style.maxWidth = '110px';
+    [['value', 'in values'], ['key', 'in keys'], ['both', 'in both']].forEach(([v, t]) => { const o = el('option'); o.value = v; o.textContent = t; tgt.appendChild(o); });
+    tgt.value = st.ui.findTarget; tgt.onchange = () => st.ui.findTarget = tgt.value;
+    const rx = el('label', 'lbl'); rx.style.whiteSpace = 'nowrap';
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = st.ui.findRe; cb.onchange = () => st.ui.findRe = cb.checked;
+    rx.appendChild(cb); rx.append(' regex');
+    const fgo = el('button', 'btn sm primary'); fgo.textContent = 'Replace'; fgo.onclick = opFindReplace;
+    r3b.appendChild(tgt); r3b.appendChild(rx); r3b.appendChild(fgo);
+    g3.appendChild(r3); g3.appendChild(r3b); box.appendChild(g3);
+
+    // add key to objects
+    const objCount = ps.filter(p => T(getAt(st.doc, p)) === 'object').length;
+    if (objCount) {
+      const g4 = el('div', 'stack');
+      g4.innerHTML = '<label class="lbl">Add a key to the ' + objCount + ' selected object' + (objCount === 1 ? '' : 's') + '</label>';
+      const r4 = el('div', 'inl');
+      const ki = el('input', 'f mono'); ki.placeholder = 'key'; ki.value = st.ui.addKey; ki.oninput = () => st.ui.addKey = ki.value;
+      const kk = el('select', 'f'); kk.style.maxWidth = '100px';
+      ['null', 'string', 'number', 'boolean', 'json', 'object', 'array'].forEach(k => { const o = el('option'); o.value = k; o.textContent = k; kk.appendChild(o); });
+      kk.value = st.ui.addKind; kk.onchange = () => { st.ui.addKind = kk.value; vi.disabled = ['null', 'object', 'array'].includes(kk.value); };
+      const vi = el('input', 'f mono'); vi.placeholder = 'value'; vi.value = st.ui.addVal; vi.oninput = () => st.ui.addVal = vi.value;
+      vi.disabled = ['null', 'object', 'array'].includes(kk.value);
+      r4.appendChild(ki); r4.appendChild(kk); r4.appendChild(vi);
+      const r4b = el('div', 'inl');
+      const a1 = el('button', 'btn sm primary'); a1.textContent = 'Add where missing'; a1.onclick = () => opAddKey(true);
+      const a2 = el('button', 'btn sm'); a2.textContent = 'Add or overwrite'; a2.onclick = () => opAddKey(false);
+      const a3 = el('button', 'btn sm'); a3.textContent = 'Sort keys'; a3.onclick = opSortKeys;
+      r4b.appendChild(a1); r4b.appendChild(a2); r4b.appendChild(a3); r4b.style.flexWrap = 'wrap';
+      g4.appendChild(r4); g4.appendChild(r4b); box.appendChild(g4);
+    }
+
+    // structure ops
+    const g5 = el('div', 'stack');
+    g5.innerHTML = '<label class="lbl">Keys and structure</label>';
+    const r5 = el('div', 'inl');
+    const rn = el('input', 'f mono'); rn.placeholder = 'rename every selected key to…';
+    const rgo = el('button', 'btn sm primary'); rgo.textContent = 'Rename';
+    rgo.onclick = () => opRenameKey(rn.value.trim());
+    rn.onkeydown = e => { if (e.key === 'Enter') rgo.click(); };
+    r5.appendChild(rn); r5.appendChild(rgo);
+    const r5b = el('div', 'inl'); r5b.style.flexWrap = 'wrap';
+    const mkb2 = (t, title, fn, cls) => { const b = el('button', 'btn sm' + (cls ? ' ' + cls : '')); b.textContent = t; b.title = title || ''; b.onclick = fn; return b; };
+    r5b.appendChild(mkb2('to text', 'Convert each value to a string', () => opCoerce('string')));
+    r5b.appendChild(mkb2('to number', 'Convert each value to a number', () => opCoerce('number')));
+    r5b.appendChild(mkb2('to boolean', '', () => opCoerce('boolean')));
+    r5b.appendChild(mkb2('to null', '', () => opCoerce('null')));
+    const r5c = el('div', 'inl'); r5c.style.flexWrap = 'wrap';
+    r5c.appendChild(mkb2('Duplicate', 'Duplicate the selected array items', opDuplicate));
+    r5c.appendChild(mkb2('Wrap in []', '', () => opWrap('array')));
+    r5c.appendChild(mkb2('Wrap in {}', 'Wrap each value as {value: …}', () => opWrap('object')));
+    r5c.appendChild(mkb2('Unwrap', 'Replace single-child containers with their child', opUnwrap));
+    r5c.appendChild(mkb2('Delete', 'Delete the selected nodes', opDelete, 'danger'));
+    g5.appendChild(r5); g5.appendChild(r5b); g5.appendChild(r5c); box.appendChild(g5);
+
+    s.appendChild(box);
+    side.appendChild(s);
+    transformPreview();
+  }
+
+  /* --- keys --- */
+  const h = el('section', 'sec');
+  h.innerHTML = '<h3>Keyboard</h3><div class="keys">' +
+    '<kbd>↑ ↓</kbd><span>move the cursor</span>' +
+    '<kbd>← →</kbd><span>fold and unfold</span>' +
+    '<kbd>Space</kbd><span>add to the selection</span>' +
+    '<kbd>Enter</kbd><span>edit the value</span>' +
+    '<kbd>Tab</kbd><span>edit the key</span>' +
+    '<kbd>m</kbd><span>select the same position everywhere</span>' +
+    '<kbd>s</kbd><span>select siblings</span>' +
+    '<kbd>z</kbd><span>zoom into the branch</span>' +
+    '<kbd>Esc</kbd><span>clear the selection or zoom out</span>' +
+    '<kbd>/</kbd><span>jump to find</span>' +
+    '<kbd>⌫</kbd><span>delete the selection</span>' +
+  '</div>';
+  side.appendChild(h);
+}
+
+/* ============================ inline editing ============================ */
+function focusRowEditor(pk) {
+  const i = st.rows.findIndex(r => r.pk === pk);
+  if (i < 0) return;
+  const row = $('#treePane').querySelector('.row[data-i="' + i + '"]');
+  const v = row && row.querySelector('.v[data-act="edit"]');
+  if (v) beginEdit(row, st.rows[i]);
+}
+function beginEdit(rowEl, r) {
+  if (r.type === 'object' || r.type === 'array') return;
+  const span = rowEl.querySelector('.v');
+  if (!span || span.dataset.editing) return;
+  const inp = el('input', 'editIn');
+  inp.value = r.type === 'string' ? r.value : JSON.stringify(r.value);
+  inp.size = Math.max(8, Math.min(60, String(inp.value).length + 2));
+  span.replaceWith(inp);
+  inp.dataset.editing = '1';
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = ok => {
+    if (done) return; done = true;
+    if (ok) {
+      const nv = coerceLike(inp.value, r.value);
+      if (JSON.stringify(nv) !== JSON.stringify(r.value)) { mutate(null, d => { if (!r.path.length) return nv; setAt(d, r.path, nv); }); return; }
+    }
+    render();
+  };
+  inp.onblur = () => finish(true);
+  inp.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    else if (e.key === 'Tab') { e.preventDefault(); finish(true); }
+    e.stopPropagation();
+  };
+}
+function beginKeyEdit(pk) {
+  const i = st.rows.findIndex(r => r.pk === pk);
+  if (i < 0) return;
+  const r = st.rows[i];
+  if (!r.path.length || typeof r.path[r.path.length - 1] !== 'string') { toast('Array items are numbered, not named'); return; }
+  const row = $('#treePane').querySelector('.row[data-i="' + i + '"]');
+  const span = row && row.querySelector('.k');
+  if (!span) return;
+  const old = r.path[r.path.length - 1];
+  const inp = el('input', 'editIn');
+  inp.value = old; inp.size = Math.max(6, old.length + 2);
+  span.replaceWith(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = ok => {
+    if (done) return; done = true;
+    const nk = inp.value.trim();
+    if (ok && nk && nk !== old) {
+      mutate(null, d => { const par = getAt(d, r.path.slice(0, -1)); if (par && !Array.isArray(par)) renameKeyIn(par, old, nk); });
+    } else render();
+  };
+  inp.onblur = () => finish(true);
+  inp.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    e.stopPropagation();
+  };
+}
+
+/* ============================ tree events ============================ */
+$('#treePane').addEventListener('mousedown', e => {
+  const rowEl = e.target.closest('.row');
+  if (!rowEl) return;
+  const i = +rowEl.dataset.i;
+  const r = st.rows[i];
+  if (!r) return;
+  const act = e.target.dataset ? e.target.dataset.act : null;
+  if (act === 'edit') { st.cursor = i; e.preventDefault(); renderSide(); beginEdit(rowEl, r); return; }
+  e.preventDefault();
+  st.cursor = i;
+  switch (act) {
+    case 'tw': {
+      if (st.collapsed.has(r.pk)) st.collapsed.delete(r.pk); else st.collapsed.add(r.pk);
+      render(); return;
+    }
+    case 'tick': toggle(r.pk); render(); return;
+    case 'focus': st.root = r.path.slice(); st.cursor = 0; render(); return;
+    case 'shape': selectShape(r.path); render(); return;
+    case 'add': addChild(r.path); return;
+    case 'table': st.root = r.path.slice(); setView('table'); return;
+    case 'del': selectOnly(r.pk); opDelete(); return;
+  }
+  if (e.shiftKey) rangeTo(i);
+  else if (e.metaKey || e.ctrlKey) toggle(r.pk);
+  else selectOnly(r.pk);
+  render();
+});
+$('#treePane').addEventListener('dblclick', e => {
+  const rowEl = e.target.closest('.row'); if (!rowEl) return;
+  const r = st.rows[+rowEl.dataset.i];
+  if (r && (r.type === 'object' || r.type === 'array')) { st.root = r.path.slice(); st.cursor = 0; render(); }
+});
+
+/* ============================ table view ============================ */
+function findTables() {
+  const out = [];
+  walkAll(st.doc, [], (v, p) => {
+    if (Array.isArray(v) && v.length > 1 && v.every(x => x && typeof x === 'object' && !Array.isArray(x))) out.push({ path: p, n: v.length });
+  });
+  return out.slice(0, 20);
+}
+function renderTable() {
+  const pane = $('#tablePane');
+  const arr = getAt(st.doc, st.root);
+  const ok = Array.isArray(arr) && arr.length && arr.every(x => x && typeof x === 'object' && !Array.isArray(x));
+  if (!ok) {
+    const cands = findTables();
+    pane.innerHTML = '<div class="empty"><p>The table view edits one array of objects at a time, and <span class="mono">' + esc(pathStr(st.root) || '$') + '</span> is not one.</p>' +
+      (cands.length ? '<p>These branches are:</p><div class="inl" style="flex-wrap:wrap">' +
+        cands.map(c => '<button class="btn sm" data-jump="' + esc(pkey(c.path)) + '">' + esc(pathStr(c.path)) + ' · ' + c.n + '</button>').join('') + '</div>' : '') + '</div>';
+    pane.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { st.root = JSON.parse(b.dataset.jump); render(); });
+    return;
+  }
+  const cols = [];
+  arr.forEach(o => Object.keys(o).forEach(k => { if (!cols.includes(k)) cols.push(k); }));
+
+  const bar = el('div', 'colbar');
+  const title = el('span'); title.className = 'mono'; title.style.color = 'var(--dim)'; title.style.fontSize = '12.5px';
+  title.textContent = pathStr(st.root) + ' · ' + arr.length + ' rows · ' + cols.length + ' columns';
+  bar.appendChild(title);
+  const nc = el('input', 'f mono'); nc.placeholder = 'new column'; nc.style.maxWidth = '150px'; nc.value = st.ui.newCol;
+  nc.oninput = () => st.ui.newCol = nc.value;
+  const ncb = el('button', 'btn sm'); ncb.textContent = 'Add column';
+  ncb.onclick = () => {
+    const name = nc.value.trim(); if (!name) return;
+    mutate('Added column "' + name + '"', d => { getAt(d, st.root).forEach(o => { if (!(name in o)) o[name] = null; }); });
+    st.ui.newCol = '';
+  };
+  nc.onkeydown = e => { if (e.key === 'Enter') ncb.click(); };
+  const nr = el('button', 'btn sm'); nr.textContent = 'Add row';
+  nr.onclick = () => mutate('Added row', d => { const o = {}; cols.forEach(c => o[c] = null); getAt(d, st.root).push(o); });
+  const norm = el('button', 'btn sm'); norm.textContent = 'Normalize'; norm.title = 'Give every row the same keys, in the same order';
+  norm.onclick = () => mutate('Normalized ' + arr.length + ' rows', d => {
+    getAt(d, st.root).forEach(o => {
+      const copy = {}; cols.forEach(c => copy[c] = Object.prototype.hasOwnProperty.call(o, c) ? o[c] : null);
+      for (const k of Object.keys(o)) delete o[k];
+      Object.assign(o, copy);
+    });
+  });
+  const back = el('button', 'btn sm'); back.textContent = 'Back to tree'; back.onclick = () => setView('tree');
+  bar.appendChild(nc); bar.appendChild(ncb); bar.appendChild(nr); bar.appendChild(norm); bar.appendChild(back);
+
+  const wrap = el('div', 'twrap');
+  const tbl = el('table', 'tbl');
+  const thead = el('thead'); const htr = el('tr');
+  const rh = el('th', 'rowh'); rh.textContent = '#'; htr.appendChild(rh);
+  cols.forEach(c => {
+    const th = el('th');
+    const inner = el('div', 'inl');
+    const name = el('span'); name.textContent = c; name.style.cursor = 'text'; name.title = 'Click to rename this key in every row';
+    name.onclick = () => {
+      const inp = el('input', 'editIn'); inp.value = c; inp.size = Math.max(6, c.length + 2);
+      name.replaceWith(inp); inp.focus(); inp.select();
+      let done = false;
+      const fin = ok2 => {
+        if (done) return; done = true;
+        const nk = inp.value.trim();
+        if (ok2 && nk && nk !== c) mutate('Renamed column to "' + nk + '"', d => { getAt(d, st.root).forEach(o => renameKeyIn(o, c, nk)); });
+        else render();
+      };
+      inp.onblur = () => fin(true);
+      inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); fin(true); } if (e.key === 'Escape') fin(false); e.stopPropagation(); };
+    };
+    const ops = el('span', 'rowacts');
+    const mkb = (t, title, fn) => { const b = el('button'); b.textContent = t; b.title = title; b.onclick = fn; return b; };
+    ops.appendChild(mkb('↕', 'Sort the rows by this column', () => mutate('Sorted by ' + c, d => {
+      const a = getAt(d, st.root);
+      const dir = (renderTable._sort === c + ':asc') ? -1 : 1;
+      renderTable._sort = c + ':' + (dir === 1 ? 'asc' : 'desc');
+      a.sort((x, y) => {
+        const xv = x[c], yv = y[c];
+        if (xv === yv) return 0;
+        if (xv === undefined || xv === null) return 1;
+        if (yv === undefined || yv === null) return -1;
+        return (typeof xv === 'number' && typeof yv === 'number') ? (xv - yv) * dir : String(xv).localeCompare(String(yv)) * dir;
+      });
+    })));
+    ops.appendChild(mkb('⇥', 'Select this column in the tree so you can batch edit it', () => {
+      st.selected = new Set(arr.map((o, i) => Object.prototype.hasOwnProperty.call(o, c) ? pkey(st.root.concat([i, c])) : null).filter(Boolean));
+      setView('tree');
+    }));
+    ops.appendChild(mkb('✕', 'Remove this key from every row', () => mutate('Dropped column "' + c + '"', d => { getAt(d, st.root).forEach(o => delete o[c]); })));
+    inner.appendChild(name); inner.appendChild(ops);
+    th.appendChild(inner);
+    htr.appendChild(th);
+  });
+  const ath = el('th'); ath.textContent = ''; htr.appendChild(ath);
+  thead.appendChild(htr); tbl.appendChild(thead);
+
+  const tb = el('tbody');
+  arr.forEach((o, i) => {
+    const tr = el('tr');
+    const rhd = el('td', 'rowh'); rhd.textContent = i; tr.appendChild(rhd);
+    cols.forEach(c => {
+      const has = Object.prototype.hasOwnProperty.call(o, c);
+      const v = o[c];
+      const td = el('td', 't' + (has ? T(v) : 'nul') + (has ? '' : ' missing'));
+      const inp = el('input');
+      inp.value = has ? (typeof v === 'string' ? v : JSON.stringify(v)) : '';
+      if (!has) inp.placeholder = 'no value';
+      inp.dataset.r = i; inp.dataset.c = c;
+      inp.onchange = () => {
+        const nv = has ? coerceLike(inp.value, v) : coerceLike(inp.value, null);
+        mutate(null, d => { getAt(d, st.root)[i][c] = nv; });
+      };
+      inp.onkeydown = e => {
+        if (e.key === 'Escape') { inp.value = has ? (typeof v === 'string' ? v : JSON.stringify(v)) : ''; inp.blur(); }
+        e.stopPropagation();
+      };
+      td.appendChild(inp); tr.appendChild(td);
+    });
+    const ops = el('td'); const w = el('div', 'rowacts');
+    const mk = (t, title, fn) => { const b = el('button'); b.textContent = t; b.title = title; b.onclick = fn; return b; };
+    w.appendChild(mk('⧉', 'Duplicate this row', () => mutate('Duplicated row ' + i, d => { const a = getAt(d, st.root); a.splice(i + 1, 0, clone(a[i])); })));
+    w.appendChild(mk('⌖', 'Show this row in the tree', () => { st.root = st.root.concat([i]); setView('tree'); }));
+    w.appendChild(mk('✕', 'Delete this row', () => mutate('Deleted row ' + i, d => { getAt(d, st.root).splice(i, 1); })));
+    ops.appendChild(w); tr.appendChild(ops);
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  wrap.appendChild(tbl);
+  pane.innerHTML = '';
+  pane.appendChild(bar); pane.appendChild(wrap);
+}
+
+/* ============================ hover kinship ============================ */
+/* Applied straight to the DOM rather than through render(), so moving the
+   pointer never rebuilds the view. */
+let hoverAt = -1;
+function hoverContainer() { return st.view === 'graph' ? document.querySelector('#graphPane .gwrap') : $('#treePane'); }
+function clearHover() {
+  const c = hoverContainer();
+  if (c) c.querySelectorAll('.hkin, .hkinalt').forEach(e => e.classList.remove('hkin', 'hkinalt'));
+  hoverAt = -1;
+}
+function hoverKin(i) {
+  if (i === hoverAt) return;
+  clearHover();
+  hoverAt = i;
+  const r = st.rows[i];
+  if (!r) return;
+  const k = r.path[r.path.length - 1];
+  if (typeof k !== 'string') return;
+  const list = st.byKey.get(k) || [];
+  if (list.length > 600) return;
+  const c = hoverContainer();
+  if (!c) return;
+  const pre = st.view === 'graph' ? '.gnode[data-i="' : '.row[data-i="';
+  for (const j of list) {
+    if (j === i || j === st.cursor || st.selected.has(st.rows[j].pk)) continue;
+    const e = c.querySelector(pre + j + '"]');
+    if (e) e.classList.add(st.rows[j].shape === r.shape ? 'hkin' : 'hkinalt');
+  }
+}
+$('#treePane').addEventListener('mouseover', e => {
+  const row = e.target.closest('.row');
+  if (row) hoverKin(+row.dataset.i); else clearHover();
+});
+$('#treePane').addEventListener('mouseleave', clearHover);
+
+/* ============================ tree chart ============================ */
+const G = { scale: 1, tx: 24, ty: 24, sig: null, refit: true, drag: null, last: null };
+const GSTEP = 30, GNH = 22, GGAP = 46;
+
+function gmeasure(s, bold) {
+  if (!gmeasure._c) {
+    const c = document.createElement('canvas');
+    gmeasure._c = c.getContext('2d');
+  }
+  gmeasure._c.font = (bold ? '500 ' : '') + '12px "IBM Plex Mono", ui-monospace, monospace';
+  return gmeasure._c.measureText(s).width;
+}
+function gLabel(r) {
+  const k = r.path[r.path.length - 1];
+  const key = !r.path.length ? '$' : (typeof k === 'number' ? '[' + k + ']' : String(k));
+  let val, cls;
+  if (r.type === 'object') { val = '{' + Object.keys(r.value).length + '}'; cls = 'fbox'; }
+  else if (r.type === 'array') { val = '[' + r.value.length + ']'; cls = 'fbox'; }
+  else {
+    val = preview(r.value, 26);
+    cls = r.type === 'string' ? 'fstr' : r.type === 'number' ? 'fnum' : r.type === 'boolean' ? 'fbool' : 'fnul';
+  }
+  return { key: key, val: val, cls: cls };
+}
+function graphLayout(rows) {
+  const idx = new Map();
+  rows.forEach((r, i) => idx.set(r.pk, i));
+  const kids = new Map();
+  const parent = new Array(rows.length).fill(-1);
+  for (let i = 1; i < rows.length; i++) {
+    const ppk = pkey(rows[i].path.slice(0, -1));
+    const pi = idx.has(ppk) ? idx.get(ppk) : -1;
+    parent[i] = pi;
+    if (pi >= 0) { if (!kids.has(pi)) kids.set(pi, []); kids.get(pi).push(i); }
+  }
+  const labels = rows.map(gLabel);
+  const keyW = labels.map(l => gmeasure(l.key, true));
+  const boxW = labels.map((l, i) => Math.ceil(15 + keyW[i] + 8 + gmeasure(l.val, false) + 12));
+  const depths = rows.map(r => r.depth);
+  const maxD = depths.reduce((a, b) => Math.max(a, b), 0);
+  const colW = new Array(maxD + 1).fill(40);
+  rows.forEach((r, i) => { colW[r.depth] = Math.max(colW[r.depth], boxW[i]); });
+  const xs = [], colX = [];
+  let acc = 0;
+  for (let d = 0; d <= maxD; d++) { colX[d] = acc; acc += colW[d] + GGAP; }
+  rows.forEach((r, i) => xs[i] = colX[r.depth]);
+  const ys = new Array(rows.length).fill(0);
+  let leaf = 0;
+  const stack = [[0, false]];
+  while (stack.length) {
+    const [i, done] = stack.pop();
+    const ch = kids.get(i);
+    if (!ch || !ch.length) { ys[i] = leaf; leaf += GSTEP; continue; }
+    if (done) { ys[i] = (ys[ch[0]] + ys[ch[ch.length - 1]]) / 2; continue; }
+    stack.push([i, true]);
+    for (let j = ch.length - 1; j >= 0; j--) stack.push([ch[j], false]);
+  }
+  return { xs, ys, colW, colX, depths, boxW, keyW, labels, kids, parent,
+           width: acc - GGAP, height: Math.max(leaf - GSTEP, 0) + GNH };
+}
+function applyGT() {
+  const g = document.getElementById('gRoot');
+  if (g) g.setAttribute('transform', 'translate(' + G.tx.toFixed(1) + ',' + G.ty.toFixed(1) + ') scale(' + G.scale.toFixed(3) + ')');
+}
+function gFit(L, wrap) {
+  const cw = wrap.clientWidth || 800, ch = wrap.clientHeight || 500;
+  const s = Math.min(1.1, (cw - 56) / Math.max(L.width, 1), (ch - 48) / Math.max(L.height, 1));
+  G.scale = Math.max(0.12, Math.min(1.1, s));
+  G.tx = 28;
+  G.ty = Math.max(24, (ch - L.height * G.scale) / 2);
+}
+function gZoom(f, cx, cy) {
+  const ns = Math.max(0.12, Math.min(3, G.scale * f));
+  const wrap = document.querySelector('#graphPane .gwrap');
+  if (!wrap) return;
+  const r = wrap.getBoundingClientRect();
+  const px = (cx === undefined ? r.width / 2 : cx - r.left), py = (cy === undefined ? r.height / 2 : cy - r.top);
+  G.tx = px - (px - G.tx) * (ns / G.scale);
+  G.ty = py - (py - G.ty) * (ns / G.scale);
+  G.scale = ns;
+  applyGT();
+}
+function collapseToDepth(d) {
+  st.collapsed = new Set();
+  if (d !== null) {
+    walkAll(getAt(st.doc, st.root), st.root, (v, p) => {
+      if ((T(v) === 'object' || T(v) === 'array') && (p.length - st.root.length) >= d) st.collapsed.add(pkey(p));
+    });
+  }
+  G.refit = true;
+  render();
+}
+function renderGraph() {
+  const pane = $('#graphPane');
+  const rows = st.rows;
+  pane.innerHTML = '';
+
+  const bar = el('div', 'gbar');
+  const lab = el('span', 'lbl'); lab.textContent = 'Unfold to depth';
+  bar.appendChild(lab);
+  [1, 2, 3, 4].forEach(d => {
+    const b = el('button', 'btn sm'); b.textContent = String(d);
+    b.title = 'Collapse everything deeper than ' + d + ' level' + (d === 1 ? '' : 's');
+    b.onclick = () => collapseToDepth(d);
+    bar.appendChild(b);
+  });
+  const ball = el('button', 'btn sm'); ball.textContent = 'all';
+  ball.onclick = () => collapseToDepth(null);
+  bar.appendChild(ball);
+  const sep = el('span'); sep.style.width = '8px'; bar.appendChild(sep);
+  const bfit = el('button', 'btn sm'); bfit.textContent = 'Fit';
+  bfit.onclick = () => { G.refit = true; renderGraph(); };
+  const bout = el('button', 'btn sm'); bout.textContent = '−'; bout.title = 'Zoom out'; bout.onclick = () => gZoom(1 / 1.25);
+  const bin = el('button', 'btn sm'); bin.textContent = '+'; bin.title = 'Zoom in'; bin.onclick = () => gZoom(1.25);
+  bar.appendChild(bfit); bar.appendChild(bout); bar.appendChild(bin);
+  const hint = el('span', 'lbl');
+  hint.style.marginLeft = 'auto';
+  hint.textContent = 'Drag to pan, scroll to zoom, click a circle to fold';
+  bar.appendChild(hint);
+  pane.appendChild(bar);
+
+  const wrap = el('div', 'gwrap');
+  pane.appendChild(wrap);
+
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty">Nothing matches <span class="mono">' + esc(st.q) + '</span>.</div>';
+    return;
+  }
+  if (rows.length > 2200) {
+    const d = el('div', 'empty');
+    d.innerHTML = '<p>' + rows.length.toLocaleString() + ' nodes are unfolded — too many to chart legibly.</p>';
+    const b = el('button', 'btn'); b.textContent = 'Fold back to two levels';
+    b.onclick = () => collapseToDepth(2);
+    d.appendChild(b);
+    wrap.appendChild(d);
+    return;
+  }
+
+  const L = graphLayout(rows);
+  G.last = L;
+
+  let s = '<svg xmlns="http://www.w3.org/2000/svg"><g id="gRoot">';
+  for (let i = 1; i < rows.length; i++) {
+    const pi = L.parent[i];
+    if (pi < 0) continue;
+    const x1 = L.xs[pi] + L.colW[L.depths[pi]], y1 = L.ys[pi];
+    const x2 = L.xs[i], y2 = L.ys[i];
+    const dx = Math.max(12, (x2 - x1) / 2);
+    const on = st.selected.has(rows[i].pk) || st.selected.has(rows[pi].pk);
+    s += '<path class="glink' + (on ? ' on' : '') + '" d="M' + x1 + ' ' + y1 + 'C' + (x1 + dx) + ' ' + y1 + ',' + (x2 - dx) + ' ' + y2 + ',' + x2 + ' ' + y2 + '"/>';
+  }
+  const gki = kinFocus();
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i], lb = L.labels[i], w = L.colW[L.depths[i]];
+    const kc = kinClass(r, i, gki);
+    const cls = 'gnode' + (st.selected.has(r.pk) ? ' sel' : '') + (i === st.cursor ? ' cur' : '') + (r.match ? ' match' : '') + (kc ? ' ' + kc : '');
+    s += '<g class="' + cls + '" data-i="' + i + '" transform="translate(' + L.xs[i] + ',' + (L.ys[i] - GNH / 2) + ')">' +
+      '<rect class="gbox" width="' + w + '" height="' + GNH + '" rx="6"/>' +
+      '<rect class="' + lb.cls + '" x="6" y="4" width="3" height="' + (GNH - 8) + '" rx="1.5"/>' +
+      '<text class="gk" x="15" y="15">' + esc(lb.key) + '</text>' +
+      '<text class="gv ' + lb.cls + '" x="' + (15 + L.keyW[i] + 8) + '" y="15">' + esc(lb.val) + '</text>' +
+      '</g>';
+    const kidCount = r.type === 'array' ? r.value.length : r.type === 'object' ? Object.keys(r.value).length : 0;
+    if (kidCount) {
+      const folded = !(L.kids.get(i) || []).length;
+      s += '<g class="gtog" data-i="' + i + '" transform="translate(' + (L.xs[i] + w) + ',' + L.ys[i] + ')">' +
+        '<circle r="8"/><text y="3.2">' + (folded ? kidCount : '–') + '</text></g>';
+    }
+  }
+  s += '</g></svg>';
+  wrap.innerHTML = s;
+  const svg = wrap.querySelector('svg');
+
+  const sig = pkey(st.root) + '|' + st.q;
+  if (G.refit || G.sig !== sig) { gFit(L, wrap); G.sig = sig; G.refit = false; }
+  applyGT();
+
+  svg.addEventListener('wheel', e => { e.preventDefault(); gZoom(Math.exp(-e.deltaY * 0.0016), e.clientX, e.clientY); }, { passive: false });
+  svg.addEventListener('pointerdown', e => {
+    const tog = e.target.closest('.gtog');
+    if (tog) {
+      const r = rows[+tog.dataset.i];
+      if (st.collapsed.has(r.pk)) st.collapsed.delete(r.pk); else st.collapsed.add(r.pk);
+      render(); return;
+    }
+    const nd = e.target.closest('.gnode');
+    if (nd) {
+      const i = +nd.dataset.i;
+      st.cursor = i;
+      if (e.shiftKey) rangeTo(i);
+      else if (e.metaKey || e.ctrlKey) toggle(rows[i].pk);
+      else selectOnly(rows[i].pk);
+      render(); return;
+    }
+    G.drag = { x: e.clientX, y: e.clientY, tx: G.tx, ty: G.ty };
+    try { svg.setPointerCapture(e.pointerId); } catch (err) { }
+    svg.classList.add('panning');
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!G.drag) return;
+    G.tx = G.drag.tx + (e.clientX - G.drag.x);
+    G.ty = G.drag.ty + (e.clientY - G.drag.y);
+    applyGT();
+  });
+  const stop = () => { G.drag = null; svg.classList.remove('panning'); };
+  svg.addEventListener('pointerup', stop);
+  svg.addEventListener('pointercancel', stop);
+  svg.addEventListener('mouseover', e => {
+    const nd = e.target.closest('.gnode');
+    if (nd) hoverKin(+nd.dataset.i); else clearHover();
+  });
+  svg.addEventListener('mouseleave', clearHover);
+  svg.addEventListener('dblclick', e => {
+    const nd = e.target.closest('.gnode');
+    if (!nd) return;
+    const r = rows[+nd.dataset.i];
+    if (r.type === 'object' || r.type === 'array') { st.root = r.path.slice(); st.cursor = 0; st.collapsed.delete(r.pk); G.refit = true; render(); }
+  });
+}
+function centerCursorGraph() {
+  const L = G.last, i = st.cursor;
+  if (!L || i >= L.xs.length) return;
+  const wrap = document.querySelector('#graphPane .gwrap');
+  if (!wrap) return;
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;
+  const sx = L.xs[i] * G.scale + G.tx, sy = L.ys[i] * G.scale + G.ty;
+  if (sx > 60 && sx < cw - 120 && sy > 40 && sy < ch - 40) return;
+  G.tx = cw / 2 - (L.xs[i] + L.colW[L.depths[i]] / 2) * G.scale;
+  G.ty = ch / 2 - L.ys[i] * G.scale;
+  applyGT();
+}
+
+/* ============================ raw view ============================ */
+function renderRaw() {
+  const ta = $('#rawText');
+  if (document.activeElement !== ta) ta.value = JSON.stringify(st.doc, null, 2);
+  $('#rawErr').textContent = '';
+}
+$('#rawApply').onclick = () => {
+  try {
+    const v = JSON.parse($('#rawText').value);
+    st.doc = v; pushHist('Applied text'); pruneSelection(); persist(); markDirty(); render(); toast('Applied');
+  } catch (e) { $('#rawErr').textContent = e.message; }
+};
+$('#rawFormat').onclick = () => { try { $('#rawText').value = JSON.stringify(JSON.parse($('#rawText').value), null, 2); $('#rawErr').textContent = ''; } catch (e) { $('#rawErr').textContent = e.message; } };
+$('#rawMinify').onclick = () => { try { $('#rawText').value = JSON.stringify(JSON.parse($('#rawText').value)); $('#rawErr').textContent = ''; } catch (e) { $('#rawErr').textContent = e.message; } };
+$('#fileIn').onchange = e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => { if (!loadDoc(String(fr.result), f.name, null)) $('#rawErr').textContent = 'Not valid JSON'; };
+  fr.readAsText(f);
+  e.target.value = '';
+};
+
+/* ============================ chrome events ============================ */
+function setView(v) {
+  if (v === 'graph' && st.view !== 'graph') G.refit = true;
+  st.view = v;
+  $('#treePane').hidden = v !== 'tree';
+  $('#graphPane').hidden = v !== 'graph';
+  $('#tablePane').hidden = v !== 'table';
+  $('#rawPane').hidden = v !== 'raw';
+  render();
+}
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+document.querySelectorAll('[data-qmode]').forEach(b => b.onclick = () => { st.qmode = b.dataset.qmode; render(); });
+$('#undo').onclick = undo;
+$('#redo').onclick = redo;
+$('#selClear').onclick = () => { st.selected.clear(); render(); };
+$('#selMatches').onclick = () => { st.selected = new Set(st.matches); render(); };
+$('#expandAll').onclick = () => { st.collapsed.clear(); G.refit = true; render(); };
+$('#collapseAll').onclick = () => {
+  st.collapsed = new Set();
+  G.refit = true;
+  walkAll(getAt(st.doc, st.root), st.root, (v, p) => { if ((T(v) === 'object' || T(v) === 'array') && p.length > st.root.length) st.collapsed.add(pkey(p)); });
+  render();
+};
+$('#themeBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const dark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+};
+$('#copyBtn').onclick = async () => {
+  const text = JSON.stringify(st.doc, null, 2);
+  try { await navigator.clipboard.writeText(text); toast('Copied ' + text.length.toLocaleString() + ' characters'); }
+  catch (e) { setView('raw'); $('#rawText').select(); toast('Copy blocked — the text is selected, press Cmd/Ctrl+C'); }
+};
+let qTimer = null;
+$('#q').oninput = e => { st.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(() => { st.cursor = 0; render(); }, 140); };
+$('#q').onkeydown = e => { if (e.key === 'Escape') { e.target.value = ''; st.q = ''; render(); } e.stopPropagation(); };
+
+/* ============================ files on disk ============================ */
+/* Chromium gives us real file handles, so Save overwrites the file you opened.
+   Everywhere else this degrades to an upload box and a download. */
+const FS = {
+  handle: null,
+  name: 'untitled.json',
+  dirty: false,
+  supported: typeof window.showOpenFilePicker === 'function',
+  types: [{ description: 'JSON', accept: { 'application/json': ['.json', '.geojson', '.jsonc'] } }]
+};
+function paintFile() {
+  const n = $('#fileName');
+  if (n) n.textContent = FS.name + (FS.dirty ? ' •' : '');
+  document.title = (FS.dirty ? '• ' : '') + FS.name + ' — Branch';
+  const st2 = $('#fileState');
+  if (st2) st2.textContent = FS.dirty ? 'unsaved changes' : (FS.handle ? 'saved to ' + FS.name : 'draft, not written to a file');
+  $('#saveAsBtn').hidden = !FS.supported;
+}
+function markDirty() { FS.dirty = true; paintFile(); }
+function loadDoc(text, name, handle) {
+  let v;
+  try { v = JSON.parse(text); }
+  catch (e) { toast('Could not parse ' + name + ': ' + e.message); return false; }
+  st.doc = v;
+  st.root = []; st.selected.clear(); st.collapsed.clear(); st.cursor = 0;
+  st.hist = []; st.hi = -1;
+  pushHist('Opened ' + name);
+  FS.handle = handle || null; FS.name = name; FS.dirty = false;
+  persist(); G.refit = true; render(); paintFile();
+  toast('Opened ' + name);
+  return true;
+}
+function okToDiscard() {
+  if (!FS.dirty) return true;
+  try { return window.confirm('Discard unsaved changes to ' + FS.name + '?'); } catch (e) { return true; }
+}
+async function openFile() {
+  if (!okToDiscard()) return;
+  if (!FS.supported) { $('#fileIn').click(); return; }
+  try {
+    const [h] = await window.showOpenFilePicker({ types: FS.types, multiple: false });
+    const f = await h.getFile();
+    loadDoc(await f.text(), h.name, h);
+  } catch (e) { if (e && e.name !== 'AbortError') toast(e.message || 'Could not open that file'); }
+}
+async function saveFile(asNew) {
+  const text = JSON.stringify(st.doc, null, 2);
+  if (FS.supported) {
+    try {
+      let h = FS.handle;
+      if (!h || asNew) h = await window.showSaveFilePicker({ suggestedName: FS.name, types: FS.types });
+      const w = await h.createWritable();
+      await w.write(text);
+      await w.close();
+      FS.handle = h; FS.name = h.name; FS.dirty = false; paintFile();
+      toast('Saved ' + FS.name);
+    } catch (e) { if (e && e.name !== 'AbortError') toast('Could not save: ' + (e.message || e.name)); }
+    return;
+  }
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.href = url; a.download = FS.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  FS.dirty = false; paintFile();
+}
+$('#openBtn').onclick = openFile;
+$('#saveBtn').onclick = () => saveFile(false);
+$('#saveAsBtn').onclick = () => saveFile(true);
+
+/* opened from the OS: double-click a .json, or "open with" */
+if ('launchQueue' in window && typeof LaunchParams !== 'undefined' && 'files' in LaunchParams.prototype) {
+  window.launchQueue.setConsumer(async params => {
+    if (!params.files || !params.files.length) return;
+    const h = params.files[0];
+    try { const f = await h.getFile(); loadDoc(await f.text(), h.name, h); } catch (e) { }
+  });
+}
+
+/* dropped onto the window */
+window.addEventListener('dragover', e => { e.preventDefault(); });
+window.addEventListener('drop', async e => {
+  e.preventDefault();
+  if (!okToDiscard()) return;
+  const dt = e.dataTransfer;
+  const it = dt && dt.items && dt.items[0];
+  if (it && it.getAsFileSystemHandle) {
+    try {
+      const h = await it.getAsFileSystemHandle();
+      if (h && h.kind === 'file') { const f = await h.getFile(); loadDoc(await f.text(), h.name, h); return; }
+    } catch (err) { }
+  }
+  const f = dt && dt.files && dt.files[0];
+  if (f) loadDoc(await f.text(), f.name, null);
+});
+
+window.addEventListener('beforeunload', e => {
+  if (!FS.dirty) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+/* offline shell */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { }); });
+}
+
+/* ============================ keyboard ============================ */
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveFile(e.shiftKey); return; }
+  if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); openFile(); return; }
+  if (typing) return;
+  if (e.key === '/') { e.preventDefault(); $('#q').focus(); return; }
+  if (e.key === '?') { e.preventDefault(); $('#side').scrollTop = $('#side').scrollHeight; return; }
+  if (st.view !== 'tree' && st.view !== 'graph') return;
+  const r = st.rows[st.cursor];
+  const move = n => { st.cursor = Math.max(0, Math.min(st.rows.length - 1, st.cursor + n)); render(); scrollCursor(); };
+  switch (e.key) {
+    case 'ArrowDown': e.preventDefault(); move(1); break;
+    case 'ArrowUp': e.preventDefault(); move(-1); break;
+    case 'ArrowRight': if (r && (r.type === 'object' || r.type === 'array')) { e.preventDefault(); if (st.collapsed.has(r.pk)) { st.collapsed.delete(r.pk); render(); } else move(1); } break;
+    case 'ArrowLeft':
+      if (!r) break; e.preventDefault();
+      if ((r.type === 'object' || r.type === 'array') && !st.collapsed.has(r.pk)) { st.collapsed.add(r.pk); render(); }
+      else { const pi = st.rows.findIndex(x => x.pk === pkey(r.path.slice(0, -1))); if (pi >= 0) { st.cursor = pi; render(); scrollCursor(); } }
+      break;
+    case ' ': if (r) { e.preventDefault(); toggle(r.pk); render(); } break;
+    case 'Enter':
+      if (!r) break;
+      e.preventDefault();
+      if (st.view === 'graph') { const vi = document.getElementById('nodeVal'); if (vi) { vi.focus(); vi.select(); } }
+      else { const rowEl = $('#treePane').querySelector('.row[data-i="' + st.cursor + '"]'); if (rowEl) beginEdit(rowEl, r); }
+      break;
+    case 'Tab': if (r) { e.preventDefault(); beginKeyEdit(r.pk); } break;
+    case 'Escape':
+      if (st.selected.size) { st.selected.clear(); render(); }
+      else if (st.root.length) { st.root.pop(); st.cursor = 0; render(); }
+      break;
+    case 'Backspace': case 'Delete':
+      if (st.selected.size) { e.preventDefault(); opDelete(); }
+      else if (r && r.path.length) { e.preventDefault(); selectOnly(r.pk); opDelete(); }
+      break;
+    case 'm': if (r) { selectShape(r.path); render(); } break;
+    case 's': if (r) { selectSiblings(r.path); render(); } break;
+    case 'a': if (r) { selectChildrenOf(r.path.length ? r.path.slice(0, -1) : r.path, true); render(); } break;
+    case 'z': if (r) { st.root = r.path.slice(); st.cursor = 0; render(); } break;
+  }
+});
+function scrollCursor() {
+  if (st.view === 'graph') { centerCursorGraph(); return; }
+  const row = $('#treePane').querySelector('.row.cursor');
+  if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+}
+
+/* ============================ main render ============================ */
+function render() {
+  hoverAt = -1;
+  computeMatches();
+  buildRows();
+  if (st.cursor >= st.rows.length) st.cursor = Math.max(0, st.rows.length - 1);
+  if (st.view === 'tree') renderTree();
+  else if (st.view === 'graph') renderGraph();
+  else if (st.view === 'table') renderTable();
+  else renderRaw();
+  renderCrumbs();
+  renderChrome();
+  renderSide();
+}
+
+/* ============================ boot ============================ */
+const saved = restore();
+if (saved !== null && typeof saved !== 'undefined') st.doc = saved;
+pushHist('Opened');
+st.collapsed.add(pkey(['settings']));
+render();
+paintFile();
+$('#treePane').focus();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "branch-json-editor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A JSON editor that works on the tree, not on the text.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "serve": "python3 -m http.server 8787 --directory public",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

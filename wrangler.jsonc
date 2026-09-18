@@ -1,0 +1,14 @@
+{
+  // Assets-only Worker: no `main`, no server code, nothing to build.
+  // Deploy with `npx wrangler deploy`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "branch-json-editor",
+  "compatibility_date": "2026-09-18",
+  "assets": {
+    "directory": "./public",
+    // The app has no routes, so anything unrecognised lands back in the editor.
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash"
+  },
+  "observability": { "enabled": true }
+}
