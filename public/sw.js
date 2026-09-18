@@ -4,7 +4,7 @@
  * index.html. index.html is fetched network-first, so code changes go live as
  * soon as someone is online, without waiting for a cache generation to expire.
  */
-const VERSION = 'branch-v1';
+const VERSION = 'branch-v2';
 const SHELL = [
   '/',
   '/index.html',

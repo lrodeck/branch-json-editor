@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Branch">
+  <rect width="64" height="64" rx="14" fill="#0f0f0f"/>
+  <g fill="none" stroke="#3a3a3a" stroke-width="2" stroke-linecap="square">
+    <path d="M17 32h15"/><path d="M32 15v34"/><path d="M32 15h15"/><path d="M32 32h15"/><path d="M32 49h15"/>
+  </g>
+  <circle cx="17" cy="32" r="4" fill="#e4e4de"/>
+  <circle cx="47" cy="15" r="4" fill="#e4e4de"/>
+  <circle cx="47" cy="49" r="4" fill="#e4e4de"/>
+  <circle cx="47" cy="32" r="7" fill="#39ff14" opacity=".28"/>
+  <circle cx="47" cy="32" r="4" fill="#39ff14"/>
+</svg>

@@ -6,338 +6,494 @@
 <title>Branch — structural JSON editor</title>
 <meta name="description" content="A JSON editor that works on the tree: select every node at the same structural position and edit them together.">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#eaeeef" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1214" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#d6d2c6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#eaeeef; --panel:#ffffff; --panel2:#f5f8f8; --line:#d3dadc; --lineSoft:#e5eaeb;
-  --ink:#141d1d; --dim:#5a6a6c; --faint:#8c999b;
-  --accent:#0c6b76; --accentInk:#ffffff; --accentSoft:#d3e9ec;
-  --sel:#d9edef; --selLine:#0c6b76;
-  --key:#233b4d; --str:#3f6212; --num:#5b21b6; --bool:#9a3412; --nul:#8c999b;
-  --warn:#b42318; --ok:#15803d; --mark:#fbe38a;
-  --kin:#fbe0ea; --kinLine:#be185d;
-  --shadow:0 1px 0 rgba(16,32,32,.05), 0 6px 18px -12px rgba(16,32,32,.35);
+  --chassis:#d6d2c6; --mod:#f1eee5; --modHover:#e7e3d8; --edge:#2b2925; --edgeSoft:#cdc8ba; --guide:#d6d2c6;
+  --ink:#1c1a16; --dim:#615c52; --faint:#918b7e;
+  --led:#39ff14; --ledOff:#b7b2a5; --keyBg:#f8f5ec; --keyHover:#fdfbf4; --fieldBg:#faf8f1;
+  --str:#2f6b2a; --num:#2c4bb5; --bool:#8a5a12; --selBg:#e2f6da;
+  --accInk:#06120a;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0e1214; --panel:#161b1e; --panel2:#1c2226; --line:#2a3338; --lineSoft:#222a2e;
-    --ink:#e5edee; --dim:#96a5a9; --faint:#66757a;
-    --accent:#4fd1c5; --accentInk:#052220; --accentSoft:#15383a;
-    --sel:#1b3a3d; --selLine:#4fd1c5;
-    --key:#c6d7e4; --str:#a6c96f; --num:#c4b5fd; --bool:#fdba74; --nul:#66757a;
-    --warn:#fca5a5; --ok:#86efac; --mark:#4b4318;
-    --kin:#3d2230; --kinLine:#f0a6c2;
-    --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+    --chassis:#0f0f0f; --mod:#1a1a1a; --modHover:#222222; --edge:#3a3a3a; --edgeSoft:#2a2a2a; --guide:#262626;
+    --ink:#e4e4de; --dim:#9a9a94; --faint:#616160;
+    --led:#39ff14; --ledOff:#3a3a3a; --keyBg:#262626; --keyHover:#2e2e2e; --fieldBg:#111111;
+    --str:#9fd39a; --num:#a6b6ff; --bool:#e0c08c; --selBg:#16261a;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0e1214; --panel:#161b1e; --panel2:#1c2226; --line:#2a3338; --lineSoft:#222a2e;
-  --ink:#e5edee; --dim:#96a5a9; --faint:#66757a;
-  --accent:#4fd1c5; --accentInk:#052220; --accentSoft:#15383a;
-  --sel:#1b3a3d; --selLine:#4fd1c5;
-  --key:#c6d7e4; --str:#a6c96f; --num:#c4b5fd; --bool:#fdba74; --nul:#66757a;
-  --warn:#fca5a5; --ok:#86efac; --mark:#4b4318;
-  --kin:#3d2230; --kinLine:#f0a6c2;
-  --shadow:0 1px 0 rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+  --chassis:#0f0f0f; --mod:#1a1a1a; --modHover:#222222; --edge:#3a3a3a; --edgeSoft:#2a2a2a; --guide:#262626;
+  --ink:#e4e4de; --dim:#9a9a94; --faint:#616160;
+  --led:#39ff14; --ledOff:#3a3a3a; --keyBg:#262626; --keyHover:#2e2e2e; --fieldBg:#111111;
+  --str:#9fd39a; --num:#a6b6ff; --bool:#e0c08c; --selBg:#16261a;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html{height:100%}
 body{
-  margin:0; background:var(--bg); color:var(--ink);
-  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  font-size:14px; line-height:1.45;
-  display:flex; flex-direction:column; min-height:100vh;
+  margin:0; min-height:100vh; padding:12px 14px 10px;
+  background:var(--chassis); color:var(--ink);
+  font-family:'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size:13px; line-height:1.45;
+  display:flex; flex-direction:column; gap:10px;
 }
 button,input,select,textarea{font:inherit; color:inherit}
 button{cursor:pointer}
-:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
-.mono{font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace}
+:focus-visible{outline:2px solid var(--led); outline-offset:1px}
+.mono,.m{font-family:'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace}
+.sp{flex:1; min-width:0}
 
-/* ---------- chrome ---------- */
-header{
-  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-  padding:10px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+/* ---------- modules ---------- */
+.mod{
+  border:1px solid var(--edge); border-radius:6px; background:var(--mod);
+  display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden;
 }
-.brand{display:flex; align-items:baseline; gap:8px; font-weight:600; letter-spacing:-.01em}
-.brand small{font-weight:400; color:var(--faint); font-size:12px}
-.crumbs{display:flex; align-items:center; gap:2px; flex-wrap:wrap; min-width:0; flex:1}
-.crumb{
-  background:none; border:0; padding:2px 6px; border-radius:5px; color:var(--dim);
-  font-family:"IBM Plex Mono", monospace; font-size:12.5px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+.modHead{
+  display:flex; align-items:center; gap:8px; height:26px; padding:0 10px; flex:none;
+  border-bottom:1px solid var(--edge);
+  font-family:'Geist Mono', monospace; font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--dim); white-space:nowrap; overflow:hidden;
 }
-.crumb:hover{background:var(--panel2); color:var(--ink)}
-.crumb.here{color:var(--ink); font-weight:500}
-.crumbSep{color:var(--faint); font-size:11px}
-.tools{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.modHead b{color:var(--ink); font-weight:600}
+.modHead .lit{color:var(--led)}
+.mod .pane, .panes{min-height:0; overflow:auto; flex:1}
+.mod *{scrollbar-width:thin; scrollbar-color:var(--edge) transparent}
+.mod *::-webkit-scrollbar{width:8px; height:8px}
+.mod *::-webkit-scrollbar-track{background:transparent}
+.mod *::-webkit-scrollbar-thumb{background:var(--edge); border-radius:4px; border:2px solid var(--mod)}
+.mod *::-webkit-scrollbar-corner{background:transparent}
+
+/* ---------- keycaps ---------- */
 .btn{
-  background:var(--panel); border:1px solid var(--line); border-radius:6px;
-  padding:5px 9px; font-size:13px; color:var(--ink);
+  border:1px solid var(--edge); border-radius:4px; background:var(--keyBg); color:var(--ink);
+  font-family:'Geist Mono', monospace; font-size:11px; letter-spacing:.04em; text-transform:uppercase;
+  padding:5px 10px; white-space:nowrap; box-shadow:0 2px 0 var(--edge); position:relative; top:0;
 }
-.btn:hover{background:var(--panel2); border-color:var(--dim)}
-.btn:disabled{opacity:.4; cursor:default}
-.btn:disabled:hover{background:var(--panel); border-color:var(--line)}
-.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accentInk); font-weight:500}
-.btn.primary:hover{filter:brightness(1.08)}
-.btn.danger{color:var(--warn)}
-.btn.sm{padding:3px 7px; font-size:12px}
-.seg{display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--panel)}
-.seg button{background:none; border:0; padding:5px 10px; font-size:13px; color:var(--dim)}
-.seg button+button{border-left:1px solid var(--line)}
-.seg button[aria-pressed="true"]{background:var(--accentSoft); color:var(--ink); font-weight:500}
+.btn:hover{background:var(--keyHover)}
+.btn:active{top:2px; box-shadow:0 0 0 var(--edge)}
+.btn.sm{font-size:10px; padding:3px 7px}
+.btn.on, .btn.primary, .btn[aria-pressed="true"]{background:var(--ink); color:var(--chassis); border-color:var(--ink)}
+.btn.acc{background:var(--led); color:var(--accInk); border-color:var(--edge); font-weight:500}
+.btn.danger{color:var(--bool)}
+.btn:disabled{opacity:.4}
+.btn:disabled:hover{background:var(--keyBg)}
+.btn:disabled:active{top:0; box-shadow:0 2px 0 var(--edge)}
 
-.toolbar{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);
-}
-.search{display:flex; align-items:center; gap:6px; flex:1; min-width:220px; max-width:520px;
-  border:1px solid var(--line); border-radius:6px; padding:3px 8px; background:var(--panel2)}
-.search input{flex:1; border:0; background:none; outline:none; padding:3px 0; font-family:"IBM Plex Mono",monospace; font-size:13px}
-.search .hint{color:var(--faint); font-size:11.5px; white-space:nowrap}
-.chip{
-  display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border-radius:999px;
-  background:var(--accentSoft); color:var(--ink); font-size:12px; font-weight:500;
-}
-.chip button{background:none;border:0;padding:0;color:var(--dim);font-size:13px;line-height:1}
+/* ---------- LEDs ---------- */
+@keyframes ledPulse{0%,100%{opacity:1}50%{opacity:.35}}
+.led,.ledOff{width:6px; height:6px; border-radius:50%; flex:none; display:inline-block}
+.led{background:var(--led); box-shadow:0 0 0 1px var(--chassis), 0 0 6px var(--led)}
+.ledOff{background:var(--ledOff); box-shadow:0 0 0 1px var(--chassis)}
+.pulse{animation:ledPulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.pulse{animation:none}}
 
-main{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 372px; min-height:0}
-.pane{min-width:0; min-height:0; overflow:auto; background:var(--panel)}
-#treePane{border-right:1px solid var(--line); padding:8px 0 40vh}
-aside{background:var(--panel2); border-left:1px solid var(--line); overflow:auto; min-height:0}
+/* ---------- row 1: title bar ---------- */
+.titlebar{display:flex; align-items:center; gap:18px; padding:0 4px; flex-wrap:wrap; flex:none}
+.wordmark{display:flex; align-items:center; gap:10px}
+.mark{font-weight:700; font-size:18px; letter-spacing:-.03em}
+.tag{font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; color:var(--dim); text-transform:uppercase; white-space:nowrap}
+.pill{font-family:'Geist Mono',monospace; font-size:10px; color:var(--faint); border:1px solid var(--edge); border-radius:3px; padding:0 5px; line-height:15px}
+.fileStatus{display:flex; align-items:center; gap:8px; font-family:'Geist Mono',monospace; font-size:11px; color:var(--dim); min-width:0}
+.fileStatus #fileName{color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fileStatus #fileState{color:var(--faint); white-space:nowrap}
+.titleTools{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.themeSw{display:flex; align-items:center; gap:6px; font-family:'Geist Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:.06em}
+#themeBtn{
+  width:34px; height:16px; border-radius:9px; border:1px solid var(--edge); background:var(--keyBg);
+  position:relative; padding:0; box-shadow:inset 0 1px 2px rgba(0,0,0,.15);
+}
+#themeBtn .knob{position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--ink)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #themeBtn .knob{left:20px}}
+:root[data-theme="dark"] #themeBtn .knob{left:20px}
+
+/* ---------- row 2: controls ---------- */
+.controls{display:grid; grid-template-columns:auto minmax(220px,1fr) auto; gap:10px; flex:none}
+.viewGrid{display:flex; gap:6px; padding:10px}
+.vcol{display:flex; flex-direction:column; align-items:center; gap:6px}
+.vcol .ledOff{background:var(--ledOff); box-shadow:0 0 0 1px var(--chassis)}
+.vcol:has(button[aria-pressed="true"]) .ledOff{background:var(--led); box-shadow:0 0 0 1px var(--chassis), 0 0 6px var(--led)}
+.findBody{display:flex; align-items:center; gap:8px; padding:10px}
+.keyGroup{display:flex; gap:4px}
+.pathBody{display:flex; align-items:center; gap:8px; padding:0 12px; height:53px; font-family:'Geist Mono',monospace; font-size:12px; overflow:hidden}
+.vdiv{width:1px; height:18px; background:var(--edge); margin:0 4px; flex:none}
+.crumbs{display:flex; align-items:center; gap:2px; min-width:0; overflow:hidden; flex:1}
+.crumb{
+  background:none; border:0; padding:1px 4px; color:var(--ink);
+  font-family:'Geist Mono',monospace; font-size:12px; max-width:150px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.crumb:hover{color:var(--ink); text-decoration:underline}
+.crumb.here{background:var(--ink); color:var(--chassis); padding:1px 6px; border-radius:3px}
+.crumbSep{color:var(--faint)}
+#selChip{display:inline-flex; align-items:center; gap:6px; color:var(--ink)}
+#selChip button{background:none; border:0; padding:0; color:var(--dim); font-size:11px; line-height:1}
+
+/* ---------- row 3: workspace ---------- */
+main{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:10px; min-height:0}
+.panes{display:flex; flex-direction:column}
+.pane{min-width:0; min-height:0; overflow:auto}
+#treePane{padding:8px 0 30vh; flex:1}
+.rail{display:flex; flex-direction:column; gap:10px; min-height:0}
+.rail .mod:first-child{flex:2}
+.rail .mod:last-child{flex:1}
+#side, #sideKeys{flex:1; overflow:auto}
+
+/* ---------- row 4: footer strip ---------- */
+.footstrip{
+  display:flex; align-items:center; gap:16px; padding:2px 4px 0; flex:none; flex-wrap:wrap;
+  font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.06em; color:var(--faint); text-transform:uppercase;
+}
+.footstrip .glyphs{font-size:12px; letter-spacing:.2em}
+
+/* ---------- fields ---------- */
+.f, .editIn, #rawText{
+  border:1px solid var(--edge); border-radius:4px; background:var(--fieldBg); color:var(--ink);
+  font-family:'Geist Mono',monospace; font-size:12px; padding:5px 8px; outline:none;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.12); width:100%;
+}
+.f:focus, .editIn:focus, #rawText:focus{border-color:var(--led)}
+.f.mono{font-family:'Geist Mono',monospace}
+textarea.f{resize:vertical; min-height:52px; line-height:1.5}
+select.f{text-transform:uppercase; font-size:11px; letter-spacing:.04em}
+#q{flex:1; min-width:0}
 
 /* ---------- tree ---------- */
 .row{
-  --d:0;
-  position:relative; display:flex; align-items:center; gap:0;
-  padding:0 10px 0 calc(34px + var(--d) * 15px);
-  height:24px; white-space:nowrap;
-  background-image:repeating-linear-gradient(to right, var(--lineSoft) 0 1px, transparent 1px 15px);
-  background-size:calc(var(--d) * 15px) 100%; background-position:34px 0; background-repeat:no-repeat;
+  --d:0; position:relative; display:flex; align-items:center; height:24px; white-space:nowrap;
+  font-family:'Geist Mono',monospace; font-size:12px; cursor:pointer;
+  padding:0 10px 0 calc(36px + var(--d) * 16px);
+  background-image:repeating-linear-gradient(to right, var(--guide) 0 1px, transparent 1px 16px);
+  background-size:calc(var(--d) * 16px) 100%; background-position:20px 0; background-repeat:no-repeat;
 }
-.row:hover{background-color:var(--panel2)}
+.row:hover{background-color:var(--modHover)}
 .row.cursor{box-shadow:inset 2px 0 0 var(--dim)}
-.row.sel{background-color:var(--sel); box-shadow:inset 2px 0 0 var(--selLine)}
-.row.match .k{background:var(--mark); border-radius:3px}
-.row.kin, .row.hkin{background-color:var(--kin); box-shadow:inset 2px 0 0 var(--kinLine)}
-.row.kinalt, .row.hkinalt{box-shadow:inset 2px 0 0 var(--kinLine)}
-.row.kinalt .k, .row.hkinalt .k{text-decoration:underline dotted var(--kinLine); text-underline-offset:2px}
+.row.sel{background-color:var(--selBg); box-shadow:inset 3px 0 0 var(--led)}
+.row.kin, .row.hkin{background-color:var(--selBg)}
+.row.kinalt .k, .row.hkinalt .k{text-decoration:underline dotted var(--dim); text-underline-offset:2px}
+.row.match .k{background:var(--selBg)}
 .tick{
-  position:absolute; left:8px; top:5px; width:13px; height:13px; padding:0;
-  border:1px solid var(--line); border-radius:3px; background:var(--panel);
+  position:absolute; left:5px; top:6px; width:12px; height:12px; padding:0;
+  border:1px solid var(--edge); border-radius:2px; background:var(--keyBg);
 }
-.row.sel .tick{background:var(--accent); border-color:var(--accent)}
-.row.sel .tick::after{content:""; position:absolute; inset:2px; border-radius:1px; background:var(--accentInk)}
+.row.sel .tick{background:var(--led); border-color:var(--edge)}
 .tw{
-  position:absolute; left:calc(24px + var(--d) * 15px); top:2px;
-  width:16px; height:20px; padding:0; border:0; background:none; color:var(--faint); font-size:10px;
+  position:absolute; left:calc(21px + var(--d) * 16px); top:2px;
+  width:15px; height:20px; padding:0; border:0; background:none;
+  color:var(--faint); font-size:9px; font-family:'Geist Mono',monospace;
 }
 .tw:hover{color:var(--ink)}
-.k{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--key); font-weight:500}
+.k{font-family:'Geist Mono',monospace; font-weight:600; color:var(--ink)}
 .k.idx{color:var(--faint); font-weight:400}
-.colon{color:var(--faint); margin:0 6px 0 1px; font-family:"IBM Plex Mono",monospace}
-.v{font-family:"IBM Plex Mono",monospace; font-size:13px; padding:1px 3px; border-radius:3px; cursor:text; max-width:52ch; overflow:hidden; text-overflow:ellipsis}
-.v:hover{background:var(--accentSoft)}
-.v.str{color:var(--str)} .v.num{color:var(--num)} .v.bool{color:var(--bool)} .v.nul{color:var(--nul); font-style:italic}
+.colon{color:var(--faint); margin:0 7px 0 1px}
+.v{padding:0; max-width:56ch; overflow:hidden; text-overflow:ellipsis; cursor:text}
+.v.str{color:var(--str)} .v.num{color:var(--num)} .v.bool{color:var(--bool)} .v.nul{color:var(--faint); font-style:italic}
 .v.box{color:var(--dim); cursor:default}
-.v.box:hover{background:none}
-.count{color:var(--faint); font-family:"IBM Plex Mono",monospace; font-size:12px; margin-left:8px}
+.count{
+  margin-left:8px; font-size:10px; color:var(--faint); border:1px solid var(--edgeSoft);
+  border-radius:2px; padding:0 4px; line-height:14px;
+}
 .acts{margin-left:10px; display:none; gap:2px}
 .row:hover .acts, .row.cursor .acts{display:flex}
-.acts button{background:none; border:0; padding:1px 4px; border-radius:4px; color:var(--faint); font-size:12px}
-.acts button:hover{background:var(--accentSoft); color:var(--ink)}
-.editIn{
-  font-family:"IBM Plex Mono",monospace; font-size:13px; border:1px solid var(--accent);
-  border-radius:3px; padding:0 3px; background:var(--panel); min-width:80px; outline:none;
+.acts button{
+  background:none; border:1px solid transparent; border-radius:2px; padding:0 4px;
+  color:var(--faint); font-family:'Geist Mono',monospace; font-size:11px;
 }
-.empty{padding:24px 16px; color:var(--dim); max-width:56ch}
-.more{padding:8px 16px; color:var(--faint); font-size:12.5px}
+.acts button:hover{color:var(--ink); border-color:var(--edgeSoft); background:var(--keyBg)}
+.empty{padding:20px 14px; color:var(--dim); max-width:56ch; font-size:12px}
+.empty .mono{color:var(--ink)}
+.more{padding:8px 14px; color:var(--faint); font-size:10px; font-family:'Geist Mono',monospace; text-transform:uppercase; letter-spacing:.06em}
 
-/* ---------- inspector ---------- */
-.sec{border-bottom:1px solid var(--line); padding:12px 14px}
-.sec h3{margin:0 0 8px; font-size:13px; font-weight:600; letter-spacing:-.005em}
-.sec h3 .n{color:var(--dim); font-weight:400}
-.pathbox{
-  font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--dim);
-  background:var(--panel); border:1px solid var(--lineSoft); border-radius:5px;
-  padding:5px 7px; word-break:break-all; margin:0 0 8px;
+/* ---------- chart ---------- */
+#graphPane{overflow:hidden; display:flex; flex-direction:column; flex:1}
+.gbar{
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px 10px; flex:none;
+  border-bottom:1px solid var(--edge); background:var(--modHover);
 }
-.pathbox b{color:var(--accent); font-weight:600}
+.gbar .lbl{font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); white-space:nowrap}
+.gwrap{
+  flex:1; min-height:300px; position:relative; overflow:hidden; background:var(--mod);
+  background-image:radial-gradient(var(--edgeSoft) 1px, transparent 1px); background-size:16px 16px; background-position:0 0;
+}
+.gwrap svg{width:100%; height:100%; display:block; cursor:grab; touch-action:none}
+.gwrap svg.panning{cursor:grabbing}
+.glink{fill:none; stroke:var(--edge); stroke-width:1}
+.glink.on{stroke:var(--led); stroke-width:1.5}
+.gnode .gbox{fill:var(--mod); stroke:var(--edge); stroke-width:1}
+.gnode.cont .gbox{fill:var(--modHover)}
+.gnode:hover .gbox{stroke:var(--dim)}
+.gnode.kin .gbox, .gnode.hkin .gbox{fill:var(--selBg)}
+.gnode.kinalt .gbox, .gnode.hkinalt .gbox{stroke-dasharray:3 2}
+.gnode.match .gbox{fill:var(--selBg)}
+.gnode.sel .gbox, .gnode.cur .gbox{fill:var(--selBg); stroke:var(--led); stroke-width:1.5}
+.gk{font-family:'Geist Mono',monospace; font-size:11px; font-weight:600; fill:var(--ink)}
+.gv{font-family:'Geist Mono',monospace; font-size:11px}
+.fstr{fill:var(--str)} .fnum{fill:var(--num)} .fbool{fill:var(--bool)} .fnul{fill:var(--faint)} .fbox{fill:var(--faint)}
+.gtog circle{fill:var(--mod); stroke:var(--edge); stroke-width:1}
+.gtog:hover circle{stroke:var(--led)}
+.gtog text{font-family:'Geist Mono',monospace; font-size:9px; fill:var(--dim); text-anchor:middle}
+
+/* ---------- table ---------- */
+#tablePane{padding:0; display:flex; flex-direction:column; flex:1; overflow:hidden}
+.colbar{
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px 10px; flex:none;
+  border-bottom:1px solid var(--edge); background:var(--modHover);
+}
+.colbar .m{font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim)}
+.twrap{overflow:auto; flex:1; min-height:0}
+table.tbl{border-collapse:separate; border-spacing:0; min-width:100%; font-family:'Geist Mono',monospace}
+table.tbl th{
+  position:sticky; top:0; z-index:2; height:26px; padding:0 10px; text-align:left;
+  background:var(--modHover); color:var(--dim); font-size:10px; font-weight:500;
+  letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+  border-bottom:1px solid var(--edge); border-right:1px solid var(--edgeSoft);
+}
+table.tbl td{
+  height:26px; padding:0; font-size:12px; white-space:nowrap;
+  border-bottom:1px solid var(--edgeSoft); border-right:1px solid var(--edgeSoft);
+}
+table.tbl th.rowh, table.tbl td.rowh{
+  position:sticky; left:0; z-index:1; background:var(--modHover); color:var(--faint);
+  text-align:right; padding:0 10px; min-width:44px;
+}
+table.tbl th.rowh{z-index:3}
+table.tbl td input{
+  width:100%; height:26px; border:0; background:none; padding:0 10px; outline:none;
+  font:inherit; font-size:12px; color:var(--ink);
+}
+table.tbl td input:focus{background:var(--selBg)}
+table.tbl td.missing input::placeholder{color:var(--faint); font-style:italic}
+table.tbl td.tstr input{color:var(--str)} table.tbl td.tnum input{color:var(--num)}
+table.tbl td.tbool input{color:var(--bool)} table.tbl td.tnul input{color:var(--faint)}
+table.tbl td.tobject input, table.tbl td.tarray input{color:var(--dim)}
+.rowacts{display:flex; gap:2px; padding:0 6px}
+.rowacts button{
+  background:none; border:1px solid transparent; border-radius:2px; padding:0 4px;
+  color:var(--faint); font-family:'Geist Mono',monospace; font-size:11px;
+}
+.rowacts button:hover{color:var(--ink); border-color:var(--edgeSoft); background:var(--keyBg)}
+
+/* ---------- text view ---------- */
+#rawPane{display:flex; flex-direction:row; padding:14px 0; gap:0; flex:1; overflow:auto}
+#gutter{
+  margin:0; padding:0 12px 0 14px; flex:none; text-align:right; user-select:none;
+  font-family:'Geist Mono',monospace; font-size:12px; line-height:1.7; color:var(--faint);
+  border-right:1px solid var(--edgeSoft); white-space:pre;
+}
+#rawText{
+  flex:1; border:0; border-radius:0; background:none; box-shadow:none; resize:none;
+  padding:0 14px; font-size:12px; line-height:1.7; color:var(--ink);
+  white-space:pre; overflow:hidden auto; min-height:100%;
+}
+#rawActs{display:flex; align-items:center; gap:6px; overflow:hidden}
+#rawErr{color:var(--bool); font-family:'Geist Mono',monospace; font-size:10px; text-transform:none; letter-spacing:0}
+.err{color:var(--bool); font-family:'Geist Mono',monospace; font-size:11px}
+
+/* ---------- inspector + branch keys ---------- */
+.sec{padding:12px; border-bottom:1px solid var(--edgeSoft)}
+.sec:last-child{border-bottom:0}
+.sec h3{
+  margin:0 0 8px; font-family:'Geist Mono',monospace; font-size:10px; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink);
+}
+.sec h3 .n{color:var(--dim); font-weight:400}
+#sideKeys .sec{padding:0; border-bottom:0}
+#sideKeys h3{display:none}
+.pathbox{
+  font-family:'Geist Mono',monospace; font-size:12px; color:var(--dim);
+  word-break:break-all; margin:0 0 10px; padding:0; background:none; border:0;
+}
+.pathbox b{color:var(--ink); font-weight:600}
 .grid{display:grid; grid-template-columns:1fr 1fr; gap:6px}
 .stack{display:flex; flex-direction:column; gap:6px}
 .inl{display:flex; gap:6px; align-items:center}
-.f{width:100%; border:1px solid var(--line); border-radius:5px; padding:5px 7px; background:var(--panel); font-size:13px; outline:none}
-.f.mono{font-family:"IBM Plex Mono",monospace; font-size:12.5px}
-.f:focus{border-color:var(--accent)}
-textarea.f{resize:vertical; min-height:56px; line-height:1.4}
-.lbl{font-size:12px; color:var(--dim)}
-.note{font-size:12px; color:var(--dim); margin:6px 0 0}
+.lbl{font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim)}
+.note{font-family:'Geist Mono',monospace; font-size:11px; color:var(--dim); margin:10px 0 0; display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+.note .sw{margin:0}
 .preview{
-  font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--dim);
-  background:var(--panel); border:1px dashed var(--line); border-radius:5px; padding:6px;
-  max-height:104px; overflow:auto; margin-top:6px; white-space:pre-wrap; word-break:break-all;
+  font-family:'Geist Mono',monospace; font-size:10.5px; color:var(--dim);
+  background:var(--fieldBg); border:1px solid var(--edgeSoft); border-radius:4px; padding:6px;
+  max-height:100px; overflow:auto; margin-top:6px; white-space:pre-wrap; word-break:break-all;
 }
-.preview .to{color:var(--ok)}
-.preview .er{color:var(--warn)}
-.prof{width:100%; border-collapse:collapse; font-size:12.5px}
-.prof th{text-align:left; font-weight:500; color:var(--faint); font-size:11.5px; padding:0 4px 4px; border-bottom:1px solid var(--lineSoft)}
-.prof td{padding:3px 4px; border-bottom:1px solid var(--lineSoft); vertical-align:middle}
-.prof td.kk{font-family:"IBM Plex Mono",monospace; color:var(--key); max-width:130px; overflow:hidden; text-overflow:ellipsis}
-.prof td.cc{color:var(--dim); white-space:nowrap; font-family:"IBM Plex Mono",monospace; font-size:11.5px}
-.prof td.oo{text-align:right; white-space:nowrap}
-.prof tr.part td.cc{color:var(--bool)}
-.prof button{background:none;border:0;color:var(--faint);padding:1px 3px;border-radius:4px;font-size:11.5px}
-.prof button:hover{background:var(--accentSoft); color:var(--ink)}
+.preview .to{color:var(--str)}
+.preview .er{color:var(--bool)}
 .types{display:flex; gap:4px; flex-wrap:wrap}
-.tbadge{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--dim); border:1px solid var(--lineSoft); border-radius:3px; padding:0 4px}
-kbd{font-family:"IBM Plex Mono",monospace; font-size:11px; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; background:var(--panel); color:var(--dim)}
-.keys{display:grid; grid-template-columns:auto 1fr; gap:4px 10px; font-size:12px; color:var(--dim); align-items:center}
-
-/* ---------- table view ---------- */
-#tablePane{padding:0}
-.twrap{overflow:auto; max-width:100%}
-table.tbl{border-collapse:separate; border-spacing:0; font-family:"IBM Plex Mono",monospace; font-size:12.5px}
-table.tbl th, table.tbl td{border-bottom:1px solid var(--lineSoft); border-right:1px solid var(--lineSoft); padding:0; height:26px}
-table.tbl th{
-  position:sticky; top:0; z-index:2; background:var(--panel2); text-align:left; padding:4px 8px;
-  font-weight:500; color:var(--key); white-space:nowrap; border-bottom:1px solid var(--line);
+.tbadge{font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim)}
+.sw{width:6px; height:6px; border-radius:50%; display:inline-block; flex:none}
+.prof{width:100%; border-collapse:separate; border-spacing:0; font-family:'Geist Mono',monospace}
+.prof th{
+  height:26px; padding:0 10px; text-align:left; background:var(--modHover); color:var(--dim);
+  font-size:10px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+  border-bottom:1px solid var(--edge); border-right:1px solid var(--edgeSoft);
 }
-table.tbl th.rowh, table.tbl td.rowh{position:sticky; left:0; z-index:1; background:var(--panel2); color:var(--faint); text-align:right; padding:0 8px; min-width:52px}
-table.tbl th.rowh{z-index:3}
-table.tbl td input{width:100%; height:26px; border:0; background:none; padding:0 8px; outline:none; font:inherit; color:var(--ink)}
-table.tbl td input:focus{background:var(--accentSoft)}
-table.tbl td.missing input::placeholder{color:var(--faint); font-style:italic}
-table.tbl td.tstr input{color:var(--str)} table.tbl td.tnum input{color:var(--num)}
-table.tbl td.tbool input{color:var(--bool)} table.tbl td.tnul input{color:var(--nul)}
-table.tbl td.tobject input, table.tbl td.tarray input{color:var(--dim)}
-.colbar{display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--panel2)}
-.rowacts{display:flex; gap:2px; padding:0 6px}
-.rowacts button{background:none;border:0;color:var(--faint);padding:0 4px;border-radius:4px}
-.rowacts button:hover{background:var(--accentSoft); color:var(--ink)}
-
-/* ---------- tree chart ---------- */
-#graphPane{overflow:hidden; display:flex; flex-direction:column; padding:0}
-.gbar{display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--panel2)}
-.gbar .lbl{white-space:nowrap}
-.gwrap{flex:1; min-height:320px; position:relative; overflow:hidden; background:var(--panel)}
-.gwrap svg{width:100%; height:100%; display:block; cursor:grab; touch-action:none}
-.gwrap svg.panning{cursor:grabbing}
-.glink{fill:none; stroke:var(--line); stroke-width:1.2}
-.glink.on{stroke:var(--selLine); stroke-width:1.8}
-.gnode .gbox{fill:var(--panel2); stroke:var(--line); stroke-width:1}
-.gnode:hover .gbox{stroke:var(--dim)}
-.gnode.sel .gbox{fill:var(--sel); stroke:var(--selLine); stroke-width:1.6}
-.gnode.cur .gbox{stroke:var(--accent); stroke-width:1.6}
-.gnode.match .gbox{fill:var(--mark)}
-.gnode.kin .gbox, .gnode.hkin .gbox{fill:var(--kin); stroke:var(--kinLine); stroke-width:1.4}
-.gnode.kinalt .gbox, .gnode.hkinalt .gbox{stroke:var(--kinLine); stroke-width:1.2; stroke-dasharray:3 2}
-.sw{display:inline-block; width:8px; height:8px; border-radius:2px; vertical-align:-1px; margin-right:5px}
-.gk{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500; fill:var(--key)}
-.gv{font-family:"IBM Plex Mono",monospace; font-size:12px}
-.fstr{fill:var(--str)} .fnum{fill:var(--num)} .fbool{fill:var(--bool)} .fnul{fill:var(--nul)} .fbox{fill:var(--dim)}
-.gtog circle{fill:var(--panel); stroke:var(--line); stroke-width:1}
-.gtog:hover circle{stroke:var(--accent)}
-.gtog text{font-family:"IBM Plex Mono",monospace; font-size:9.5px; fill:var(--dim); text-anchor:middle}
-
-/* ---------- raw view ---------- */
-#rawPane{padding:12px 14px; display:flex; flex-direction:column; gap:8px}
-#rawText{
-  flex:1; min-height:50vh; width:100%; resize:vertical;
-  font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.5;
-  border:1px solid var(--line); border-radius:7px; padding:10px; background:var(--panel); outline:none;
+.prof th:last-child{border-right:0}
+.prof td{
+  height:26px; padding:0 10px; font-size:12px; white-space:nowrap; color:var(--ink);
+  border-bottom:1px solid var(--edgeSoft); border-right:1px solid var(--edgeSoft);
 }
-#rawText:focus{border-color:var(--accent)}
-.err{color:var(--warn); font-family:"IBM Plex Mono",monospace; font-size:12.5px}
-
-footer{
-  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-  padding:6px 14px; border-top:1px solid var(--line); background:var(--panel);
-  font-size:12px; color:var(--dim);
+.prof td:last-child{border-right:0}
+.prof td.kk{max-width:120px; overflow:hidden; text-overflow:ellipsis}
+.prof td.cc{color:var(--dim); font-size:11px}
+.prof tr.part td.cc{color:var(--bool)}
+.prof td.oo{text-align:right; padding:0 6px}
+.prof button{
+  background:none; border:1px solid transparent; border-radius:2px; padding:0 4px;
+  color:var(--faint); font-family:'Geist Mono',monospace; font-size:10px;
+  letter-spacing:.04em; text-transform:uppercase;
 }
-footer .sp{flex:1}
+.prof button:hover{color:var(--ink); border-color:var(--edgeSoft); background:var(--keyBg)}
+kbd{
+  font-family:'Geist Mono',monospace; font-size:10px; color:var(--dim);
+  border:1px solid var(--edge); border-radius:3px; padding:0 4px; background:var(--keyBg);
+}
+.keys{display:grid; grid-template-columns:auto 1fr; gap:5px 10px; align-items:center;
+  font-family:'Geist Mono',monospace; font-size:11px; color:var(--dim)}
+
+/* ---------- toast ---------- */
 #toast{
-  position:fixed; left:50%; bottom:46px; transform:translate(-50%,8px); opacity:0;
-  background:var(--ink); color:var(--panel); padding:7px 12px; border-radius:7px; font-size:12.5px;
-  pointer-events:none; transition:opacity .16s, transform .16s; z-index:50; max-width:80vw;
+  position:fixed; left:50%; bottom:40px; transform:translate(-50%,8px); opacity:0;
+  background:var(--ink); color:var(--chassis); border:1px solid var(--edge); border-radius:4px;
+  padding:7px 12px; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:.04em;
+  text-transform:uppercase; pointer-events:none; transition:opacity .16s, transform .16s;
+  z-index:50; max-width:80vw;
 }
 #toast.on{opacity:1; transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){#toast{transition:none}}
 
+/* ---------- narrow ---------- */
 @media (max-width:900px){
+  body{padding:10px 10px 8px}
+  .controls{grid-template-columns:minmax(0,1fr)}
   main{grid-template-columns:minmax(0,1fr)}
-  aside{border-left:0; border-top:1px solid var(--line); max-height:none}
-  #treePane{padding-bottom:16px; max-height:52vh}
+  .rail{min-height:340px}
+  .rail .mod:first-child, .rail .mod:last-child{flex:none}
+  #side, #sideKeys{max-height:50vh}
+  .panes{min-height:52vh}
+  .pathBody{height:auto; padding:10px 12px; flex-wrap:wrap}
   .v{max-width:28ch}
+  .titlebar{gap:10px}
 }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">Branch <small id="fileName">untitled.json</small></div>
-  <nav class="crumbs" id="crumbs" aria-label="Focused path"></nav>
-  <div class="tools">
+<div class="titlebar">
+  <div class="wordmark">
+    <span class="mark">BRANCH</span>
+    <span class="tag">structural json editor</span>
+    <span class="pill">1.1</span>
+  </div>
+  <div class="fileStatus">
+    <span class="ledOff" id="fileLed"></span>
+    <span id="fileName">untitled.json</span>
+    <span id="fileState"></span>
+  </div>
+  <span class="sp"></span>
+  <div class="titleTools">
     <button class="btn sm" id="undo" title="Undo (Cmd/Ctrl+Z)">Undo</button>
     <button class="btn sm" id="redo" title="Redo (Cmd/Ctrl+Shift+Z)">Redo</button>
-    <div class="seg" role="group" aria-label="View">
-      <button data-view="tree" aria-pressed="true">Tree</button>
-      <button data-view="graph" aria-pressed="false">Chart</button>
-      <button data-view="table" aria-pressed="false">Table</button>
-      <button data-view="raw" aria-pressed="false">Text</button>
-    </div>
-    <button class="btn sm" id="openBtn" title="Open a JSON file (Cmd/Ctrl+O)">Open</button>
-    <button class="btn sm" id="saveBtn" title="Save (Cmd/Ctrl+S)">Save</button>
-    <button class="btn sm" id="saveAsBtn" title="Save as a new file (Cmd/Ctrl+Shift+S)">Save as</button>
     <button class="btn sm" id="copyBtn" title="Copy the whole document">Copy</button>
-    <button class="btn sm" id="themeBtn" title="Switch light/dark">◐</button>
+    <div class="themeSw">
+      <span>light</span>
+      <button id="themeBtn" title="Switch light or dark" aria-label="Switch light or dark"><span class="knob"></span></button>
+      <span>dark</span>
+    </div>
+    <button class="btn" id="openBtn" title="Open a JSON file (Cmd/Ctrl+O)">Open</button>
+    <button class="btn sm" id="saveAsBtn" title="Save as a new file (Cmd/Ctrl+Shift+S)">Save as</button>
+    <button class="btn acc" id="saveBtn" title="Save (Cmd/Ctrl+S)">Save</button>
   </div>
-</header>
+</div>
 
-<div class="toolbar">
-  <div class="search">
-    <span class="hint">find</span>
-    <input id="q" placeholder="key, value, or path glob e.g. $.catalog[*].price" autocomplete="off" spellcheck="false">
-    <span class="hint" id="qCount"></span>
+<div class="controls">
+  <div class="mod">
+    <div class="modHead"><b>View</b><span>select 1.1</span></div>
+    <div class="viewGrid">
+      <div class="vcol"><span class="ledOff"></span><button class="btn" data-view="tree" aria-pressed="true">Tree</button></div>
+      <div class="vcol"><span class="ledOff"></span><button class="btn" data-view="graph" aria-pressed="false">Chart</button></div>
+      <div class="vcol"><span class="ledOff"></span><button class="btn" data-view="table" aria-pressed="false">Table</button></div>
+      <div class="vcol"><span class="ledOff"></span><button class="btn" data-view="raw" aria-pressed="false">Text</button></div>
+    </div>
   </div>
-  <div class="seg" role="group" aria-label="Search in">
-    <button data-qmode="both" aria-pressed="true">Both</button>
-    <button data-qmode="key" aria-pressed="false">Keys</button>
-    <button data-qmode="value" aria-pressed="false">Values</button>
+  <div class="mod">
+    <div class="modHead">
+      <b>Find</b><span>path glob · keys · values</span>
+      <span class="sp"></span>
+      <span class="lit" id="qCount"></span>
+      <span id="selChip" hidden><span id="selChipN"></span><button id="selClear" title="Clear selection">✕</button></span>
+    </div>
+    <div class="findBody">
+      <input id="q" class="f" placeholder="$.catalog[*].price" autocomplete="off" spellcheck="false">
+      <div class="keyGroup">
+        <button class="btn" data-qmode="both" aria-pressed="true">Both</button>
+        <button class="btn" data-qmode="key" aria-pressed="false">Keys</button>
+        <button class="btn" data-qmode="value" aria-pressed="false">Values</button>
+      </div>
+      <button class="btn" id="selMatches" hidden>Select matches</button>
+    </div>
   </div>
-  <button class="btn sm" id="expandAll">Expand all</button>
-  <button class="btn sm" id="collapseAll">Collapse</button>
-  <button class="btn sm" id="selMatches" hidden>Select matches</button>
-  <span class="sp" style="flex:1"></span>
-  <span id="selChip" hidden class="chip"><span id="selChipN"></span><button id="selClear" title="Clear selection">✕</button></span>
+  <div class="mod">
+    <div class="modHead"><b>Path</b><span>focus</span></div>
+    <div class="pathBody">
+      <nav class="crumbs" id="crumbs" aria-label="Focused path"></nav>
+      <span class="vdiv"></span>
+      <button class="btn" id="expandAll">Expand</button>
+      <button class="btn" id="collapseAll">Fold</button>
+    </div>
+  </div>
 </div>
 
 <main>
-  <section class="pane" id="treePane" tabindex="0" aria-label="JSON tree"></section>
-  <section class="pane" id="graphPane" hidden aria-label="Tree chart"></section>
-  <section class="pane" id="tablePane" hidden aria-label="Table editor"></section>
-  <section class="pane" id="rawPane" hidden aria-label="JSON text">
-    <div class="inl">
-      <button class="btn primary" id="rawApply">Apply text</button>
-      <button class="btn" id="rawFormat">Reformat</button>
-      <button class="btn" id="rawMinify">Minify</button>
-      <label class="btn" style="display:inline-flex; align-items:center; gap:6px">Open file<input type="file" id="fileIn" accept=".json,.txt,application/json" style="display:none"></label>
-      <span class="err" id="rawErr"></span>
+  <div class="mod">
+    <div class="modHead">
+      <b id="paneName">Tree</b><span id="paneSub">indented 1.1</span>
+      <span class="sp"></span>
+      <span id="rawActs" hidden>
+        <button class="btn sm primary" id="rawApply">Apply text</button>
+        <button class="btn sm" id="rawFormat">Reformat</button>
+        <button class="btn sm" id="rawMinify">Minify</button>
+        <label class="btn sm" for="fileIn">Open file</label>
+        <input type="file" id="fileIn" accept=".json,.txt,application/json" style="display:none">
+        <span id="rawErr"></span>
+      </span>
+      <span id="stat"></span>
     </div>
-    <textarea id="rawText" spellcheck="false" wrap="off"></textarea>
-  </section>
-  <aside id="side" aria-label="Inspector"></aside>
+    <div class="panes">
+      <section class="pane" id="treePane" tabindex="0" aria-label="JSON tree"></section>
+      <section class="pane" id="graphPane" hidden aria-label="Tree chart"></section>
+      <section class="pane" id="tablePane" hidden aria-label="Table editor"></section>
+      <section class="pane" id="rawPane" hidden aria-label="JSON text">
+        <pre id="gutter" aria-hidden="true">1</pre>
+        <textarea id="rawText" spellcheck="false" wrap="off"></textarea>
+      </section>
+    </div>
+  </div>
+
+  <div class="rail">
+    <div class="mod">
+      <div class="modHead"><b>Inspector</b><span>node 1.0</span><span class="sp"></span><span id="inspType"></span></div>
+      <div class="pane" id="side" aria-label="Inspector"></div>
+    </div>
+    <div class="mod">
+      <div class="modHead"><b>Branch keys</b><span>profile 1.0</span><span class="sp"></span><span id="keysMeta"></span></div>
+      <div class="pane" id="sideKeys" aria-label="Branch keys"></div>
+    </div>
+  </div>
 </main>
 
-<footer>
-  <span id="stat"></span>
-  <span id="fileState"></span>
+<div class="footstrip">
+  <span>click row to inspect</span><span>⇧ range</span><span>⌘ add</span><span>? keys</span>
   <span class="sp"></span>
-  <span>Click a row to select · <kbd>Shift</kbd> range · <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> add · <kbd>?</kbd> keys</span>
-</footer>
+  <span class="glyphs">∵ ⩆</span>
+  <span class="sp"></span>
+  <span>br.json.0s1</span><span>rev 1.1</span>
+</div>
+
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -610,9 +766,8 @@ function rowHTML(r, i, ki) {
   if (cont) {
     const open = r.type === 'array' ? '[' : '{';
     const close = r.type === 'array' ? ']' : '}';
-    valHTML = coll
-      ? '<span class="v box">' + open + ' ' + kids + ' ' + (r.type === 'array' ? (kids === 1 ? 'item' : 'items') : (kids === 1 ? 'key' : 'keys')) + ' ' + close + '</span>'
-      : '<span class="v box">' + open + close + '</span><span class="count">' + kids + '</span>';
+    valHTML = '<span class="v box">' + open + (coll ? '…' : '') + close + '</span>' +
+      (kids ? '<span class="count">' + kids + '</span>' : '');
   } else {
     const t = r.type;
     const cl = t === 'string' ? 'str' : t === 'number' ? 'num' : t === 'boolean' ? 'bool' : 'nul';
@@ -667,11 +822,15 @@ function renderChrome() {
   $('#redo').disabled = st.hi >= st.hist.length - 1;
   const n = st.selected.size;
   $('#selChip').hidden = !n;
-  $('#selChipN').textContent = n + (n === 1 ? ' node selected' : ' nodes selected');
+  $('#selChipN').textContent = n + ' selected';
   const mm = st.matches.size;
   $('#qCount').textContent = st.q.trim() ? (mm + ' match' + (mm === 1 ? '' : 'es')) : '';
   $('#selMatches').hidden = !st.q.trim() || !mm;
   document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === st.view)));
+  const VIEWS = { tree: ['Tree', 'indented 1.1'], graph: ['Chart', 'node-link 1.1'], table: ['Table', 'array editor 1.0'], raw: ['Text', 'raw json 1.0'] };
+  const vmeta = VIEWS[st.view] || VIEWS.tree;
+  $('#paneName').textContent = vmeta[0];
+  $('#paneSub').textContent = vmeta[1];
   document.querySelectorAll('[data-qmode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.qmode === st.qmode)));
   let nodes = 0, leaves = 0;
   walkAll(st.doc, [], (v) => { nodes++; if (T(v) !== 'object' && T(v) !== 'array') leaves++; });
@@ -932,7 +1091,11 @@ function profileTargets(prof, key) {
 /* ============================ render: inspector ============================ */
 function renderSide() {
   const side = $('#side');
+  const keys = $('#sideKeys');
   side.innerHTML = '';
+  keys.innerHTML = '';
+  const km = $('#keysMeta'); if (km) km.textContent = '';
+  const ity = $('#inspType'); if (ity) ity.textContent = '';
   const cur = st.rows[st.cursor];
   const n = st.selected.size;
 
@@ -943,7 +1106,8 @@ function renderSide() {
     s.innerHTML = '<h3>Node</h3>' +
       '<p class="pathbox">' + esc(pathStr(cur.path) || '$') + '</p>' +
       (sp !== pathStr(cur.path) ? '<p class="pathbox">shape <b>' + esc(sp) + '</b></p>' : '') +
-      '<div class="types"><span class="tbadge">' + cur.type + '</span></div>';
+      '';
+    if (ity) ity.textContent = cur.type;
     const ck = cur.path[cur.path.length - 1];
     if (typeof ck === 'string') {
       let nKey = 0, nShape = 0;
@@ -951,9 +1115,9 @@ function renderSide() {
         if (p.length && p[p.length - 1] === ck) { nKey++; if (shapeStr(p) === sp) nShape++; }
       });
       s.innerHTML += '<p class="note">' +
-        '<span class="sw" style="background:var(--accent)"></span>this one · ' +
-        '<span class="sw" style="background:var(--kin)"></span>' + (nShape - 1) + ' more at this shape · ' +
-        '<span class="sw" style="background:var(--kinLine)"></span>' + (nKey - nShape) + ' named ' + esc(ck) + ' elsewhere</p>';
+        '<span class="led"></span>this one' +
+        '<span class="ledOff"></span>' + (nShape - 1) + ' more at this shape' +
+        '<span class="ledOff"></span>' + (nKey - nShape) + ' named ' + esc(ck) + ' elsewhere</p>';
     }
     if (cur.type !== 'object' && cur.type !== 'array') {
       const ed = el('div', 'inl'); ed.style.marginTop = '8px';
@@ -987,7 +1151,8 @@ function renderSide() {
   const prof = cur ? (profileOf(cur.path) || (cur.path.length ? profileOf(cur.path.slice(0, -1)) : null)) : null;
   if (prof) {
     const s = el('section', 'sec');
-    s.innerHTML = '<h3>Branch keys <span class="n">· ' + prof.total + ' children of ' + esc(shapeStr(prof.path)) + '</span></h3>';
+    s.innerHTML = '';
+    if (km) km.textContent = prof.total + ' children · ' + shapeStr(prof.path);
     const tb = el('table', 'prof');
     tb.innerHTML = '<thead><tr><th>key</th><th>present</th><th>types</th><th></th></tr></thead>';
     const body = el('tbody');
@@ -1046,8 +1211,8 @@ function renderSide() {
     }
     tb.appendChild(body);
     s.appendChild(tb);
-    const foot = el('div', 'inl'); foot.style.marginTop = '8px'; foot.style.flexWrap = 'wrap';
-    const b1 = el('button', 'btn sm'); b1.textContent = 'Give every child every key';
+    const foot = el('div', 'inl'); foot.style.padding = '10px'; foot.style.flexWrap = 'wrap';
+    const b1 = el('button', 'btn sm'); b1.textContent = 'Fill all keys';
     b1.title = 'Add the missing keys to every child, as null';
     b1.onclick = () => {
       const keys = prof.cols.map(c => c.key);
@@ -1070,7 +1235,7 @@ function renderSide() {
     b2.onclick = () => { st.root = prof.path.slice(); setView('table'); };
     if (T(getAt(st.doc, prof.path)) === 'array') foot.appendChild(b2);
     s.appendChild(foot);
-    side.appendChild(s);
+    keys.appendChild(s);
   }
 
   /* --- batch panel --- */
@@ -1476,27 +1641,18 @@ $('#treePane').addEventListener('mouseleave', clearHover);
 
 /* ============================ tree chart ============================ */
 const G = { scale: 1, tx: 24, ty: 24, sig: null, refit: true, drag: null, last: null };
-const GSTEP = 30, GNH = 22, GGAP = 46;
+/* Geist Mono advance at 11px, node padding, row and column step: the numbers
+   the design reference is drawn with. Columns still widen past GCOL when real
+   labels are longer than the mockup's, rather than letting nodes collide. */
+const GSTEP = 28, GNH = 22, GGAP = 24, GCOL = 150, GPAD = 10, GCW = 6.6, GMINW = 46;
 
-function gmeasure(s, bold) {
-  if (!gmeasure._c) {
-    const c = document.createElement('canvas');
-    gmeasure._c = c.getContext('2d');
-  }
-  gmeasure._c.font = (bold ? '500 ' : '') + '12px "IBM Plex Mono", ui-monospace, monospace';
-  return gmeasure._c.measureText(s).width;
-}
 function gLabel(r) {
   const k = r.path[r.path.length - 1];
   const key = !r.path.length ? '$' : (typeof k === 'number' ? '[' + k + ']' : String(k));
-  let val, cls;
-  if (r.type === 'object') { val = '{' + Object.keys(r.value).length + '}'; cls = 'fbox'; }
-  else if (r.type === 'array') { val = '[' + r.value.length + ']'; cls = 'fbox'; }
-  else {
-    val = preview(r.value, 26);
-    cls = r.type === 'string' ? 'fstr' : r.type === 'number' ? 'fnum' : r.type === 'boolean' ? 'fbool' : 'fnul';
-  }
-  return { key: key, val: val, cls: cls };
+  if (r.type === 'object') return { pre: key, val: ' {' + Object.keys(r.value).length + '}', cls: 'fbox' };
+  if (r.type === 'array') return { pre: key, val: ' [' + r.value.length + ']', cls: 'fbox' };
+  const cls = r.type === 'string' ? 'fstr' : r.type === 'number' ? 'fnum' : r.type === 'boolean' ? 'fbool' : 'fnul';
+  return { pre: key + ': ', val: preview(r.value, 26), cls: cls };
 }
 function graphLayout(rows) {
   const idx = new Map();
@@ -1510,15 +1666,15 @@ function graphLayout(rows) {
     if (pi >= 0) { if (!kids.has(pi)) kids.set(pi, []); kids.get(pi).push(i); }
   }
   const labels = rows.map(gLabel);
-  const keyW = labels.map(l => gmeasure(l.key, true));
-  const boxW = labels.map((l, i) => Math.ceil(15 + keyW[i] + 8 + gmeasure(l.val, false) + 12));
+  const keyW = labels.map(l => l.pre.length * GCW);
+  const boxW = labels.map(l => Math.max(GMINW, Math.ceil(GPAD * 2 + (l.pre.length + l.val.length) * GCW)));
   const depths = rows.map(r => r.depth);
   const maxD = depths.reduce((a, b) => Math.max(a, b), 0);
-  const colW = new Array(maxD + 1).fill(40);
+  const colW = new Array(maxD + 1).fill(GMINW);
   rows.forEach((r, i) => { colW[r.depth] = Math.max(colW[r.depth], boxW[i]); });
   const xs = [], colX = [];
   let acc = 0;
-  for (let d = 0; d <= maxD; d++) { colX[d] = acc; acc += colW[d] + GGAP; }
+  for (let d = 0; d <= maxD; d++) { colX[d] = acc; acc += Math.max(GCOL, colW[d] + GGAP); }
   rows.forEach((r, i) => xs[i] = colX[r.depth]);
   const ys = new Array(rows.length).fill(0);
   let leaf = 0;
@@ -1532,7 +1688,7 @@ function graphLayout(rows) {
     for (let j = ch.length - 1; j >= 0; j--) stack.push([ch[j], false]);
   }
   return { xs, ys, colW, colX, depths, boxW, keyW, labels, kids, parent,
-           width: acc - GGAP, height: Math.max(leaf - GSTEP, 0) + GNH };
+           width: colX[maxD] + colW[maxD], height: Math.max(leaf - GSTEP, 0) + GNH };
 }
 function applyGT() {
   const g = document.getElementById('gRoot');
@@ -1572,7 +1728,7 @@ function renderGraph() {
   pane.innerHTML = '';
 
   const bar = el('div', 'gbar');
-  const lab = el('span', 'lbl'); lab.textContent = 'Unfold to depth';
+  const lab = el('span', 'lbl'); lab.textContent = 'depth';
   bar.appendChild(lab);
   [1, 2, 3, 4].forEach(d => {
     const b = el('button', 'btn sm'); b.textContent = String(d);
@@ -1591,7 +1747,7 @@ function renderGraph() {
   bar.appendChild(bfit); bar.appendChild(bout); bar.appendChild(bin);
   const hint = el('span', 'lbl');
   hint.style.marginLeft = 'auto';
-  hint.textContent = 'Drag to pan, scroll to zoom, click a circle to fold';
+  hint.textContent = 'drag to pan · scroll to zoom · circle folds';
   bar.appendChild(hint);
   pane.appendChild(bar);
 
@@ -1629,18 +1785,18 @@ function renderGraph() {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i], lb = L.labels[i], w = L.colW[L.depths[i]];
     const kc = kinClass(r, i, gki);
-    const cls = 'gnode' + (st.selected.has(r.pk) ? ' sel' : '') + (i === st.cursor ? ' cur' : '') + (r.match ? ' match' : '') + (kc ? ' ' + kc : '');
+    const cont = r.type === 'object' || r.type === 'array';
+    const cls = 'gnode' + (cont ? ' cont' : '') + (st.selected.has(r.pk) ? ' sel' : '') + (i === st.cursor ? ' cur' : '') + (r.match ? ' match' : '') + (kc ? ' ' + kc : '');
     s += '<g class="' + cls + '" data-i="' + i + '" transform="translate(' + L.xs[i] + ',' + (L.ys[i] - GNH / 2) + ')">' +
-      '<rect class="gbox" width="' + w + '" height="' + GNH + '" rx="6"/>' +
-      '<rect class="' + lb.cls + '" x="6" y="4" width="3" height="' + (GNH - 8) + '" rx="1.5"/>' +
-      '<text class="gk" x="15" y="15">' + esc(lb.key) + '</text>' +
-      '<text class="gv ' + lb.cls + '" x="' + (15 + L.keyW[i] + 8) + '" y="15">' + esc(lb.val) + '</text>' +
+      '<rect class="gbox" width="' + w + '" height="' + GNH + '" rx="4"/>' +
+      '<text class="gk" x="' + GPAD + '" y="14.5">' + esc(lb.pre) + '</text>' +
+      '<text class="gv ' + lb.cls + '" x="' + (GPAD + L.keyW[i]).toFixed(1) + '" y="14.5">' + esc(lb.val) + '</text>' +
       '</g>';
     const kidCount = r.type === 'array' ? r.value.length : r.type === 'object' ? Object.keys(r.value).length : 0;
     if (kidCount) {
       const folded = !(L.kids.get(i) || []).length;
       s += '<g class="gtog" data-i="' + i + '" transform="translate(' + (L.xs[i] + w) + ',' + L.ys[i] + ')">' +
-        '<circle r="8"/><text y="3.2">' + (folded ? kidCount : '–') + '</text></g>';
+        '<circle r="7"/><text y="3">' + (folded ? kidCount : '–') + '</text></g>';
     }
   }
   s += '</g></svg>';
@@ -1711,6 +1867,19 @@ function renderRaw() {
   const ta = $('#rawText');
   if (document.activeElement !== ta) ta.value = JSON.stringify(st.doc, null, 2);
   $('#rawErr').textContent = '';
+  paintGutter();
+}
+/* The pane scrolls as one piece, so the textarea grows to fit its content and
+   the gutter simply sits beside it — no scroll syncing to drift out of step. */
+function paintGutter() {
+  const ta = $('#rawText'), g = $('#gutter');
+  if (!ta || !g) return;
+  const lines = ta.value.split('\n').length;
+  let out = '';
+  for (let i = 1; i <= lines; i++) out += i + '\n';
+  g.textContent = out;
+  ta.style.height = 'auto';
+  ta.style.height = Math.max(ta.scrollHeight, 240) + 'px';
 }
 $('#rawApply').onclick = () => {
   try {
@@ -1718,8 +1887,9 @@ $('#rawApply').onclick = () => {
     st.doc = v; pushHist('Applied text'); pruneSelection(); persist(); markDirty(); render(); toast('Applied');
   } catch (e) { $('#rawErr').textContent = e.message; }
 };
-$('#rawFormat').onclick = () => { try { $('#rawText').value = JSON.stringify(JSON.parse($('#rawText').value), null, 2); $('#rawErr').textContent = ''; } catch (e) { $('#rawErr').textContent = e.message; } };
-$('#rawMinify').onclick = () => { try { $('#rawText').value = JSON.stringify(JSON.parse($('#rawText').value)); $('#rawErr').textContent = ''; } catch (e) { $('#rawErr').textContent = e.message; } };
+$('#rawFormat').onclick = () => { try { $('#rawText').value = JSON.stringify(JSON.parse($('#rawText').value), null, 2); $('#rawErr').textContent = ''; paintGutter(); } catch (e) { $('#rawErr').textContent = e.message; } };
+$('#rawMinify').onclick = () => { try { $('#rawText').value = JSON.stringify(JSON.parse($('#rawText').value)); $('#rawErr').textContent = ''; paintGutter(); } catch (e) { $('#rawErr').textContent = e.message; } };
+$('#rawText').addEventListener('input', paintGutter);
 $('#fileIn').onchange = e => {
   const f = e.target.files && e.target.files[0];
   if (!f) return;
@@ -1737,6 +1907,7 @@ function setView(v) {
   $('#graphPane').hidden = v !== 'graph';
   $('#tablePane').hidden = v !== 'table';
   $('#rawPane').hidden = v !== 'raw';
+  $('#rawActs').hidden = v !== 'raw';
   render();
 }
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
@@ -1778,10 +1949,12 @@ const FS = {
 };
 function paintFile() {
   const n = $('#fileName');
-  if (n) n.textContent = FS.name + (FS.dirty ? ' •' : '');
+  if (n) n.textContent = FS.name;
   document.title = (FS.dirty ? '• ' : '') + FS.name + ' — Branch';
   const st2 = $('#fileState');
-  if (st2) st2.textContent = FS.dirty ? 'unsaved changes' : (FS.handle ? 'saved to ' + FS.name : 'draft, not written to a file');
+  if (st2) st2.textContent = FS.dirty ? '— unsaved' : (FS.handle ? '' : '— draft');
+  const led = $('#fileLed');
+  if (led) led.className = FS.dirty ? 'led pulse' : 'ledOff';
   $('#saveAsBtn').hidden = !FS.supported;
 }
 function markDirty() { FS.dirty = true; paintFile(); }

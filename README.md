@@ -36,29 +36,62 @@ in and paste out. Folding and selection are shared, so work moves between them.
 
 `?` in the app lists the keyboard map. Undo covers the last 80 edits.
 
-## Deploy to Cloudflare
+**The look.** Hardware-instrument panel: a putty or near-black chassis carrying
+outlined modules, each with a labelled header strip; physical keycap buttons with
+a 2px hard shadow that depress on click; LED indicators for the active view and
+the unsaved-changes pulse; one neon green accent (`#39ff14`) and nothing else
+coloured except value types. Geist for UI, Geist Mono for all data. Light and
+dark both follow the system and can be switched with the toggle in the title bar.
 
-Cloudflare now recommends Workers with static assets for new projects, which is
-what `wrangler.jsonc` sets up — an assets-only Worker with no server code.
+## Deploy from GitHub to Cloudflare
 
-```sh
-npm install
-npx wrangler deploy
-```
+Push this repo to GitHub, then pick one of two routes. Both redeploy on every
+push to `main`, permanently, with nothing to run by hand.
 
-Then attach a domain under Workers & Pages → your Worker → Settings → Domains.
+### Route A — GitHub Actions (the workflow in this repo)
 
-If you'd rather push to git and forget about it, Pages works with zero changes:
-connect the repo, leave the build command empty, and set the output directory to
-`public`. The `_headers` file is honoured by both products.
+`.github/workflows/deploy.yml` already does the deploy. You only need two
+repository secrets.
 
-For git-driven deploys on Workers, enable Workers Builds on the repo, or use
-`cloudflare/wrangler-action@v3` in a workflow with `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` as secrets.
+1. **Get an API token.** Cloudflare dashboard → My Profile → API Tokens →
+   Create Token → use the **Edit Cloudflare Workers** template. Copy the token;
+   it is shown once.
+2. **Get your account ID.** Workers & Pages → right-hand sidebar, or the hex
+   string in the dashboard URL.
+3. **Add both to GitHub.** Repo → Settings → Secrets and variables → Actions →
+   New repository secret:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+4. **Push to `main`.** The Actions tab shows the run; the Worker appears at
+   `branch-json-editor.<your-subdomain>.workers.dev`. Rename it by changing
+   `name` in `wrangler.jsonc`.
+
+You can also trigger a deploy by hand from the Actions tab (Run workflow), and
+test the credentials locally with `npx wrangler whoami` then `npm run deploy`.
+
+### Route B — Cloudflare builds it, no secrets, no workflow
+
+Workers & Pages → Create → Workers → Connect to Git, choose the repo, and accept
+the defaults. Cloudflare reads `wrangler.jsonc`, finds no build step, and uploads
+`public/`. Every push to `main` deploys; other branches get preview URLs. If you
+take this route, delete `.github/workflows/deploy.yml` so the two systems don't
+both deploy the same commit.
+
+Pages works identically if you prefer it: Connect to Git, empty build command,
+output directory `public`. Cloudflare now recommends Workers for new projects,
+which is why the config here targets Workers.
+
+### A custom domain
+
+Open the Worker → Settings → Domains & Routes → Add. If the domain's DNS is
+already on Cloudflare, the record and certificate are handled for you. A
+`workers.dev` subdomain works fine too, but installing the app and the `.json`
+file association need HTTPS, which both give you.
 
 ### Locally
 
 ```sh
+npm install
 npm run dev     # wrangler dev, closest to production
 npm run serve   # plain python http server on :8787
 ```
@@ -99,10 +132,10 @@ past 2,200 nodes; fold by depth or zoom into a branch.
 handles are not persisted, so after a reload Save asks where to put the document
 again. Persisting handles in IndexedDB is the fix if that annoys you.
 
-**Fonts.** The page loads IBM Plex from Google Fonts, which is the only outbound
-request it makes. For genuine offline typography and one less third party,
-download the woff2 files into `public/fonts/`, replace the `<link>` in
-`index.html` with `@font-face` rules, add the files to `SHELL` in `sw.js`, and
+**Fonts.** The page loads Geist and Geist Mono from Google Fonts, which is the
+only outbound request it makes. For genuine offline typography and one less
+third party, download the woff2 files into `public/fonts/`, replace the `<link>`
+in `index.html` with `@font-face` rules, add the files to `SHELL` in `sw.js`, and
 drop the two font hosts from the CSP in `_headers`.
 
 **Caching.** `index.html` is fetched network-first, so a deploy reaches people as
@@ -112,13 +145,14 @@ cached file.
 ## Files
 
 ```
+.github/workflows/deploy.yml   push to main, deploy to Cloudflare
 public/
-  index.html               the entire editor
-  sw.js                    offline shell
-  manifest.webmanifest     app identity, .json file handlers
-  _headers                 CSP and caching, read by Pages and Workers
-  icon.svg, icon-*.png     launcher icons
-wrangler.jsonc             assets-only Worker
+  index.html                   the entire editor
+  sw.js                        offline shell
+  manifest.webmanifest         app identity, .json file handlers
+  _headers                     CSP and caching, read by Pages and Workers
+  icon.svg, icon-*.png         launcher icons
+wrangler.jsonc                 assets-only Worker
 ```
 
 ## Taking it further
